@@ -1,4 +1,5 @@
 from scrapy.selector import Selector
+from CrunchyCrawler.request import generateRequest
 from CrunchyCrawler.rabbitmq.spiders import RabbitMQMixin
 from CrunchyCrawler.parser.CrunchbaseDataParser import CrunchbaseDataParser
 from scrapy.linkextractors import LinkExtractor
@@ -7,37 +8,26 @@ from scrapy.linkextractors import LinkExtractor
 class CrunchySpider(RabbitMQMixin):
     name = "crunchy"
 
-    # default headers
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept-Language': 'en-US,en;q=0.9',  # this is game changing header
-    }
-
     async def parse(self, response):
-        # page = response.meta["playwright_page"]
-        # await page.close()
-
-        print("Parsing Done")
-
-        # rest of the parsing
         x = Selector(response)
         item = CrunchbaseDataParser.extract_item(x)
+
         item['crunchbase_url'] = response.url
+        delivery_tag = response.meta.get('delivery_tag')
         item['delivery_tag'] = response.meta.get('delivery_tag')
         item['_response'] = response.status
+        
         print("Scrapped item ---->", item)
+        
         similarCompanies = CrunchbaseDataParser.extractSimilarCompanies(x)
         if similarCompanies:
-            # similarCompanies = "/hello"
             similarCompanies = response.urljoin(similarCompanies)
             print("Getting similarCompanies------->", similarCompanies)
-            yield self.request(similarCompanies, self.parseSimilarCompanies, item)
+            yield generateRequest(similarCompanies, delivery_tag, self.parseSimilarCompanies, item)
         else:
             yield item
 
     async def parseSimilarCompanies(self, response):
-        # page = response.meta["playwright_page"]
-        # await page.close()
         # parse similar companies from response
         link_ext = LinkExtractor(
             restrict_xpaths="//org-similarity-card", allow=r'\b\/organization\b')

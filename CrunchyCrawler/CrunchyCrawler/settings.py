@@ -30,6 +30,10 @@ SPIDER_MODULES = ["CrunchyCrawler.spiders"]
 NEWSPIDER_MODULE = "CrunchyCrawler.spiders"
 
 # playwright
+SPIDER_MIDDLEWARES = { 
+    'CrunchyCrawler.middlewares.RabbitMQSpiderMiddleware' : 100 
+}
+
 
 DOWNLOAD_HANDLERS = {
     "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
@@ -38,7 +42,7 @@ DOWNLOAD_HANDLERS = {
 
 DOWNLOADER_MIDDLEWARES = {
     'CrunchyCrawler.middlewares.CrunchyUserAgentMiddleware': 545,
-    # 'CrunchyCrawler.middlewares.RabbitMQMiddleware': 600
+    'CrunchyCrawler.middlewares.RabbitMQMiddleware': 546,
 }
 
 SCHEDULER = "CrunchyCrawler.rabbitmq.scheduler.Scheduler"

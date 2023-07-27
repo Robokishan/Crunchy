@@ -2,7 +2,8 @@ from scrapy.utils.reqser import request_to_dict, request_from_dict
 import pickle
 from scrapy import Request
 from scrapy_playwright.page import PageMethod
-from scrapy.spidermiddlewares.httperror import HttpError
+
+from CrunchyCrawler.request import generateRequest
 
 
 class Base(object):
@@ -75,11 +76,6 @@ class SpiderQueue(Base):
 
 class MainQueue():
 
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept-Language': 'en-US,en;q=0.9',  # this is game changing header
-    }
-
     def __init__(self, server, spider, key=None, exchange=None):
         """Initialize per-spider RabbitMQ queue.
         Parameters:
@@ -115,63 +111,11 @@ class MainQueue():
 
     def _decode_request(self, encoded_request, delivery_tag):
         """Decode an request previously encoded"""
-        return self.request(encoded_request, delivery_tag)
+        return generateRequest(encoded_request, delivery_tag)
 
     def clear(self):
         """Clear queue/stack"""
         self.server.queue_purge(self.key)
 
-    def request(self, url, delivery_tag):
-        return Request(url,
-                       headers=self.headers,
-                       errback=self.errback,
-                       meta={
-                           "delivery_tag": delivery_tag,
-                           # this is just a default ip address It will be changed in middleware
-                           #   "playwright_context_kwargs": {
-                           #       "proxy": {
-                           #           "server": "http://147.135.54.182:3128",
-                           #       },
-                           #   },
-                           "playwright": True,
-                           #    "playwright_include_page": True,
-                           "playwright_page_methods": [
-                               PageMethod(
-                                   "wait_for_load_state", "networkidle")
-                           ],
-                       })
+    
 
-    async def errback(self, failure):
-        if failure.check(HttpError):
-            # you can get the response
-            response = failure.value.response
-            request = failure.request
-            print('HttpError on ', request)
-
-            # try:
-            #     page = response.meta["playwright_page"]
-            #     await page.close()
-            # except Exception as e:
-            #     print("Closing Playwright from queue", e)
-
-            # check response
-            try:
-                print("HttpError on", response.url)
-                delivery_tag = response.meta.get('delivery_tag')
-                print("Delivery tag", delivery_tag)
-                if response.status == 404:
-                    return self.server.basic_ack(delivery_tag=delivery_tag)
-
-            except Exception as e:
-                print("Http error something went wrong", e)
-            self.server.basic_nack(
-                delivery_tag=delivery_tag, requeue=True)
-        else:
-            print("Other error from scrapy", failure)
-            try:
-                request = failure.request
-                delivery_tag = request.meta.get('delivery_tag')
-                print("Other services", delivery_tag)
-                self.server.basic_nack(delivery_tag=delivery_tag, requeue=True)
-            except Exception as e:
-                print("Rabbitmq other error something went wrong", e)

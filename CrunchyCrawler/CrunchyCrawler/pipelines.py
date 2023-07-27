@@ -54,6 +54,7 @@ class RabbitMQPipeline:
     def close_spider(self, spider):
         pass
 
+# TODO: refactor this and make it clear
     def process_item(self, item, spider):
         print("item -----> ", item)
         try:
