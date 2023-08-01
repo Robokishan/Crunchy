@@ -1,0 +1,106 @@
+version: '3'
+services:
+
+  # tor didn't worked for crunchbase
+  # tor-proxy:
+  #   image: "dperson/torproxy:latest"
+  #   restart: always
+  #   ports:
+  #     - "9050:9050"
+  #     - "9051:9051"
+  #     - "8118:8118"
+  #   environment:
+  #     TORUSER: 'crunchbase'
+  #     TOR_NewCircuitPeriod: 2000
+  #     EXITNODE: 1
+  #     BW: 1000000
+  #     PASSWORD: 'admin'
+  # tor-ipv6:
+  #   image: "chriswayg/tor-server"
+  #   restart: always
+  #   ports:
+  #     - "9053:9001"
+  #     - "9054:9030"
+  #   environment:
+  #     TOR_NICKNAME: 'crunchbase'
+
+  # tor-bart:
+  #   container_name: 'tor-bart'
+  #   image: 'pickapp/tor-proxy:latest'
+  #   ports:
+  #     - '9990:8888'
+  #   environment:
+  #     - IP_CHANGE_SECONDS=60
+
+  crawler:
+    container_name: crawler
+    image: "robokishan/crunchy:crawler"
+    restart: always
+    env_file:
+      - ${ENV_FILE}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  api:
+    container_name: api
+    image: "robokishan/crunchy:rest"
+    restart: always
+    command: bash -c "python manage.py runserver 0.0.0.0:8000"
+    ports:
+      - "8001:8000"
+    env_file:
+      - ${ENV_FILE}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  ui:
+    container_name: ui
+    image: "robokishan/crunchy:ui"
+    ports:
+      - "5051:80"
+    env_file:
+      - ${ENV_FILE}
+    depends_on:
+      - api
+
+  databucket:
+    container_name: bucket
+    image: "robokishan/crunchy:rest"
+    command: bash -c "python manage.py gather_data_from_kafka"
+    restart: always
+    env_file:
+      - ${ENV_FILE}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  rabbitmq:
+    container_name: queue
+    image: "rabbitmq:management-alpine"
+    restart: always
+    hostname: queue
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq/
+      - rabbitmq_log:/var/log/rabbitmq
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "check_running" ]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+  # mongodb:
+  #   image: "mongo:5.0"
+  #   restart: always
+  #   ports:
+  #     - "27017:27017"
+
+volumes:
+  rabbitmq_data:
+  rabbitmq_log:
