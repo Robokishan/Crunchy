@@ -1,22 +1,21 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import type {
-  InferGetServerSidePropsType
-} from "next";
-import { useCallback, useEffect, useState } from "react";
+import type { InferGetServerSidePropsType } from "next";
+import { useCallback, useEffect, useRef, useState } from "react";
+import useSWR from "swr";
 import { CompanyDetails } from "~/components/Companies";
 import crunchyClient from "~/utils/crunchyClient";
 
 export const getServerSideProps = async () => {
   try {
-    const { data: companiesList } = await crunchyClient.get("/public/comp")
+    const { data: companiesList } = await crunchyClient.get("/public/comp");
     return {
       props: {
         companiesList,
       },
     };
   } catch (error) {
-    console.error("Server side error ", error)
+    console.error("Server side error ", error);
     return {
       props: {
         error: "Something went wrong",
@@ -25,34 +24,49 @@ export const getServerSideProps = async () => {
   }
 };
 
-const DEFAULT_URL = "/public/comp"
+const DEFAULT_URL = "/public/comp";
 
-export default function Home({ companiesList }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+export default function Home({
+  companiesList,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const [companies, setCompanies] = useState(companiesList ?? []);
 
+  const abortConRef = useRef<AbortController>();
 
-  const [companies, setCompanies] = useState(companiesList ?? [])
+  const [url, setSearchUrl] = useState(DEFAULT_URL);
+  const {
+    data,
+    error,
+    isValidating: isLoading,
+  } = useSWR(url, fetchApi, {
+    refreshInterval: 2000,
+  });
 
-  const [url, setSearchUrl] = useState(DEFAULT_URL)
-
-  const fetchApi = (urlPath: string) => crunchyClient.get(urlPath).then(response => {
+  async function fetchApi(urlPath: string) {
+    if (abortConRef.current) abortConRef.current.abort();
+    abortConRef.current = new AbortController();
+    const response = await crunchyClient.get(urlPath, {
+      signal: abortConRef.current.signal,
+    });
     setCompanies(response.data);
-  })
-
-  useEffect(() => {
-    const timer = setInterval(() => fetchApi(url), 2000)
-    return () => clearInterval(timer)
-  }, [url])
-
+    return response;
+  }
 
   const onSearch = useCallback((value: string) => {
-    const urlPath = value && value.length > 0 ? DEFAULT_URL + `?search=${value}` : DEFAULT_URL
-    setSearchUrl(urlPath)
-    fetchApi(urlPath).catch(err => console.error("fetchapi error",err))
-  }, [])
+    const urlPath =
+      value && value.length > 0
+        ? DEFAULT_URL + `?search=${value}`
+        : DEFAULT_URL;
+    setSearchUrl(urlPath);
+  }, []);
 
   return (
     <>
-      <CompanyDetails onSearch={onSearch} companyDetails={companies} />
+      <CompanyDetails
+        isLoading={isLoading}
+        onSearch={onSearch}
+        companyDetails={companies}
+      />
     </>
   );
 }

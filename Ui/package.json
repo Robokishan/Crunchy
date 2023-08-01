@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "dev": "next dev",
+    "dev": "env-cmd -f ../.env.dev  next dev",
     "lint": "next lint",
     "start": "next start"
   },
@@ -16,11 +16,16 @@
     "@mui/material": "^5.13.7",
     "@t3-oss/env-nextjs": "^0.3.1",
     "axios": "^1.4.0",
+    "env-cmd": "^10.1.0",
     "material-react-table": "^1.14.0",
     "next": "^13.4.2",
     "react": "18.2.0",
     "react-dom": "18.2.0",
+    "react-modal": "^3.16.1",
+    "react-outside-click-handler": "^1.3.0",
+    "react-toastify": "^9.1.3",
     "react-virtuoso": "^4.3.11",
+    "swr": "^2.2.0",
     "zod": "^3.21.4"
   },
   "devDependencies": {
@@ -29,6 +34,8 @@
     "@types/prettier": "^2.7.2",
     "@types/react": "^18.2.6",
     "@types/react-dom": "^18.2.4",
+    "@types/react-modal": "^3.16.0",
+    "@types/react-outside-click-handler": "^1.3.1",
     "@typescript-eslint/eslint-plugin": "^5.59.6",
     "@typescript-eslint/parser": "^5.59.6",
     "autoprefixer": "^10.4.14",
