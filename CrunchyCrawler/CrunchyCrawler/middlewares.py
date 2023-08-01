@@ -19,6 +19,7 @@ class CrunchyUserAgentMiddleware(object):
     def process_request(self, request, spider):
         agent = random.choice(AGENTS)
         request.headers['User-Agent'] = agent
+        print(f"Selected agent: {agent}")
 
 class RabbitMQMiddleware(object):
     def __init__(self, channel):
