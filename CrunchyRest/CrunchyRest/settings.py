@@ -49,7 +49,8 @@ INSTALLED_APPS = [
     'databucket',
     'public',
     'rabbitmq',
-    'api'
+    'api',
+    'knowledgeGraph'
 ]
 
 MIDDLEWARE = [
