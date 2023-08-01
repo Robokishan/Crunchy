@@ -95,6 +95,33 @@ services:
       interval: 5s
       timeout: 10s
       retries: 5
+    
+  portainer:
+    container_name: portainer
+    image: 'portainer/portainer:latest'
+    logging:
+      options: {max-size: 5m}
+    ports:
+      - '9000:9000'
+      - '8000:8000'
+    restart: always
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock'
+      - 'portainer_data:/data'
+
+  watchtower:
+    command: 'crawler api ui bucket --interval 86400 --debug --remove-volumes --cleanup --include-restarting'
+    container_name: watchtower
+    environment:
+      - REPO_USER=${DOCKER_USERNAME}
+      - REPO_PASS=${DOCKER_PASSWORD}
+    image: 'containrrr/watchtower:1.2.1'
+    logging:
+      options: {max-size: 5m}
+    privileged: true
+    restart: always
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock'
   # mongodb:
   #   image: "mongo:5.0"
   #   restart: always
