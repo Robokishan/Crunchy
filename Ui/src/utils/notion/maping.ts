@@ -39,104 +39,97 @@ export const mapToNotion = (databaseId: string, mapingData: MappingArg) => {
     name: tag,
   }));
 
-  let payload: any = {
-    icon: {
-      type: "external",
-      external: {
-        url: iconUrl,
+  let properties: any = {
+    Research: {
+      type: "select",
+      select: {
+        name: "Not started",
+        color: "orange",
       },
     },
-    parent: {
-      database_id: databaseId,
+    Domain: {
+      type: "multi_select",
+      multi_select: _tags,
     },
-    properties: {
-      Research: {
-        type: "select",
-        select: {
-          name: "Not started",
-          color: "orange",
+    Website: {
+      type: "url",
+      url: website,
+    },
+    Description: {
+      type: "rich_text",
+      rich_text: [
+        {
+          type: "text",
+          text: {
+            content: description,
+            link: null,
+          },
+          annotations: {
+            bold: false,
+            italic: false,
+            strikethrough: false,
+            underline: false,
+            code: false,
+            color: "default",
+          },
+          plain_text: description,
+          href: null,
         },
-      },
-      Domain: {
-        type: "multi_select",
-        multi_select: _tags,
-      },
+      ],
+    },
+    Founders: {
+      type: "rich_text",
+      rich_text: [
+        {
+          type: "text",
+          text: {
+            content: _founders,
+            link: null,
+          },
+          annotations: {
+            bold: false,
+            italic: false,
+            strikethrough: false,
+            underline: false,
+            code: false,
+            color: "default",
+          },
+          plain_text: _founders,
+          href: null,
+        },
+      ],
+    },
+    Crunchbase: {
+      type: "url",
+      url: crunchbaseUrl,
+    },
+    Name: {
+      type: "title",
+      title: [
+        {
+          type: "text",
+          text: {
+            content: name,
+            link: null,
+          },
+          annotations: {
+            bold: false,
+            italic: false,
+            strikethrough: false,
+            underline: false,
+            code: false,
+            color: "default",
+          },
+          plain_text: name,
+          href: null,
+        },
+      ],
+    },
+  };
 
-      Website: {
-        type: "url",
-        url: website,
-      },
-      Description: {
-        type: "rich_text",
-        rich_text: [
-          {
-            type: "text",
-            text: {
-              content: description,
-              link: null,
-            },
-            annotations: {
-              bold: false,
-              italic: false,
-              strikethrough: false,
-              underline: false,
-              code: false,
-              color: "default",
-            },
-            plain_text: description,
-            href: null,
-          },
-        ],
-      },
-      Founders: {
-        type: "rich_text",
-        rich_text: [
-          {
-            type: "text",
-            text: {
-              content: _founders,
-              link: null,
-            },
-            annotations: {
-              bold: false,
-              italic: false,
-              strikethrough: false,
-              underline: false,
-              code: false,
-              color: "default",
-            },
-            plain_text: _founders,
-            href: null,
-          },
-        ],
-      },
-      Funding: {
-        type: "rich_text",
-        rich_text: [
-          {
-            type: "text",
-            text: {
-              content: _funding,
-              link: null,
-            },
-            annotations: {
-              bold: false,
-              italic: false,
-              strikethrough: false,
-              underline: false,
-              code: false,
-              color: "default",
-            },
-            plain_text: _funding,
-            href: null,
-          },
-        ],
-      },
-      Crunchbase: {
-        type: "url",
-        url: crunchbaseUrl,
-      },
-    
+  if (founded) {
+    properties = {
+      ...properties,
       Founded: {
         type: "rich_text",
         rich_text: [
@@ -159,14 +152,19 @@ export const mapToNotion = (databaseId: string, mapingData: MappingArg) => {
           },
         ],
       },
+    };
+  }
 
-      Name: {
-        type: "title",
-        title: [
+  if (acquired) {
+    properties = {
+      ...properties,
+      Acquired: {
+        type: "rich_text",
+        rich_text: [
           {
             type: "text",
             text: {
-              content: name,
+              content: acquired,
               link: null,
             },
             annotations: {
@@ -177,17 +175,45 @@ export const mapToNotion = (databaseId: string, mapingData: MappingArg) => {
               code: false,
               color: "default",
             },
-            plain_text: name,
+            plain_text: acquired,
             href: null,
           },
         ],
       },
-    },
-  };
+    };
+  }
+
+  if (_funding) {
+    properties = {
+      ...properties,
+      Funding: {
+        type: "rich_text",
+        rich_text: [
+          {
+            type: "text",
+            text: {
+              content: _funding,
+              link: null,
+            },
+            annotations: {
+              bold: false,
+              italic: false,
+              strikethrough: false,
+              underline: false,
+              code: false,
+              color: "default",
+            },
+            plain_text: _funding,
+            href: null,
+          },
+        ],
+      },
+    };
+  }
 
   if (country) {
-    payload = {
-      ...payload,
+    properties = {
+      ...properties,
       Country: {
         type: "select",
         select: {
@@ -198,8 +224,8 @@ export const mapToNotion = (databaseId: string, mapingData: MappingArg) => {
   }
 
   if (stocksymbol) {
-    payload = {
-      ...payload,
+    properties = {
+      ...properties,
       "Stock Symbol": {
         type: "rich_text",
         rich_text: [
@@ -225,37 +251,9 @@ export const mapToNotion = (databaseId: string, mapingData: MappingArg) => {
     };
   }
 
-  if(acquired) {
-    payload = {
-      ...payload,
-      Acquired: {
-        type: "rich_text",
-        rich_text: [
-          {
-            type: "text",
-            text: {
-              content: acquired,
-              link: null,
-            },
-            annotations: {
-              bold: false,
-              italic: false,
-              strikethrough: false,
-              underline: false,
-              code: false,
-              color: "default",
-            },
-            plain_text: acquired,
-            href: null,
-          },
-        ],
-      },
-    }
-  }
-
-  if(lastfunding) {
-    payload = {
-      ...payload,
+  if (lastfunding) {
+    properties = {
+      ...properties,
       LastFunding: {
         type: "rich_text",
         rich_text: [
@@ -278,8 +276,23 @@ export const mapToNotion = (databaseId: string, mapingData: MappingArg) => {
           },
         ],
       },
-    }
+    };
   }
+
+  let payload: any = {
+    icon: {
+      type: "external",
+      external: {
+        url: iconUrl,
+      },
+    },
+    parent: {
+      database_id: databaseId,
+    },
+    properties: properties,
+  };
+
+  console.log("Notion payload", JSON.stringify(payload));
 
   return payload;
 };
