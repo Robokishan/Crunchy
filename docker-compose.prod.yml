@@ -131,3 +131,4 @@ services:
 volumes:
   rabbitmq_data:
   rabbitmq_log:
+  portainer_data:
