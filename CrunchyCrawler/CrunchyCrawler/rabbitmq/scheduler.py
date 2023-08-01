@@ -37,7 +37,7 @@ class Scheduler(object):
         self.idle_before_close = idle_before_close
         self.stats = None
         self.counter = 20
-        self.threshold = 20
+        self.threshold = 10
         print("Using custom scheduler")
 
     def __len__(self):
