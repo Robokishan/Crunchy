@@ -10,6 +10,7 @@
 import os
 from decouple import config as DefaultConfig
 from decouple import Config, RepositoryEnv
+from shutil import which
 
 DEV_ENV_FILE = "../.env.dev"
 PROD_ENV_FILE = "../.env.prod"
@@ -41,8 +42,9 @@ DOWNLOAD_HANDLERS = {
 }
 
 DOWNLOADER_MIDDLEWARES = {
-    'CrunchyCrawler.middlewares.CrunchyUserAgentMiddleware': 545,
+    # 'CrunchyCrawler.middlewares.CrunchyUserAgentMiddleware': 545,
     'CrunchyCrawler.middlewares.RabbitMQMiddleware': 546,
+    'scrapy_selenium.SeleniumMiddleware': 800,
 }
 
 SCHEDULER = "CrunchyCrawler.rabbitmq.scheduler.Scheduler"
@@ -158,3 +160,10 @@ AUTOTHROTTLE_ENABLED = True
 REQUEST_FINGERPRINTER_IMPLEMENTATION = "2.7"
 TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 FEED_EXPORT_ENCODING = "utf-8"
+
+# selenium settings
+SELENIUM_DRIVER_NAME = 'firefox'
+# SELENIUM_DRIVER_EXECUTABLE_PATH = config('SELENIUM_DRIVER_EXECUTABLE_PATH', cast=str)
+# print("SELENIUM_DRIVER_EXECUTABLE_PATH:",SELENIUM_DRIVER_EXECUTABLE_PATH)
+# SELENIUM_DRIVER_ARGUMENTS=['--headless']  
+SELENIUM_DRIVER_ARGUMENTS=[]  

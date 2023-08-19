@@ -3,3 +3,4 @@ pika==1.3.2
 scrapy-playwright==0.0.26
 confluent-kafka==2.1.1
 python-decouple==3.8
+scrapy-selenium==0.0.7
