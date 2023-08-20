@@ -30,7 +30,7 @@ class KafkaPipeline:
 
     def process_item(self, item, spider):
         # Serialize the item as JSON
-        print(item)
+        print("Sending to data pipeline",item)
         json_data = json.dumps(dict(item))
 
         # Send the JSON data to the Kafka topic

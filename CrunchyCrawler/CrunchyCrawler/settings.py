@@ -44,7 +44,8 @@ DOWNLOAD_HANDLERS = {
 DOWNLOADER_MIDDLEWARES = {
     # 'CrunchyCrawler.middlewares.CrunchyUserAgentMiddleware': 545,
     'CrunchyCrawler.middlewares.RabbitMQMiddleware': 546,
-    'scrapy_selenium.SeleniumMiddleware': 800,
+    'CrunchyCrawler.middlewares.SeleniumMiddleware': 544,
+    # 'scrapy_selenium.SeleniumMiddleware': 800,
 }
 
 SCHEDULER = "CrunchyCrawler.rabbitmq.scheduler.Scheduler"
@@ -155,6 +156,7 @@ AUTOTHROTTLE_ENABLED = True
 # HTTPCACHE_DIR = "httpcache"
 # HTTPCACHE_IGNORE_HTTP_CODES = []
 # HTTPCACHE_STORAGE = "scrapy.extensions.httpcache.FilesystemCacheStorage"
+HTTPERROR_ALLOWED_CODES = [403]  # List of allowed HTTP status codes
 
 # Set settings whose default value is deprecated to a future-proof value
 REQUEST_FINGERPRINTER_IMPLEMENTATION = "2.7"
@@ -163,7 +165,8 @@ FEED_EXPORT_ENCODING = "utf-8"
 
 # selenium settings
 SELENIUM_DRIVER_NAME = 'firefox'
-# SELENIUM_DRIVER_EXECUTABLE_PATH = config('SELENIUM_DRIVER_EXECUTABLE_PATH', cast=str)
-# print("SELENIUM_DRIVER_EXECUTABLE_PATH:",SELENIUM_DRIVER_EXECUTABLE_PATH)
-# SELENIUM_DRIVER_ARGUMENTS=['--headless']  
+SELENIUM_DRIVER_EXECUTABLE_PATH = config('SELENIUM_DRIVER_EXECUTABLE_PATH', cast=str)
+SELENIUM_BROWSER_EXECUTABLE_PATH = config('SELENIUM_BROWSER_EXECUTABLE_PATH', cast=str)
+print("SELENIUM_DRIVER_EXECUTABLE_PATH:",SELENIUM_DRIVER_EXECUTABLE_PATH)
+# SELENIUM_DRIVER_ARGUMENTS=['-headless']  
 SELENIUM_DRIVER_ARGUMENTS=[]  
