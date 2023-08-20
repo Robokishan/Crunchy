@@ -8,7 +8,7 @@ from tqdm import tqdm
 # Define your Neo4j connection credentials
 neo4j_uri = "neo4j://localhost:7687"  # Replace with your Neo4j server URI
 neo4j_user = "neo4j"   # Replace with your Neo4j username
-neo4j_password = "neo4j"  # Replace with your Neo4j password
+neo4j_password = "Abcd@1234567890"  # Replace with your Neo4j password
 
 # Create a Neo4j driver instance
 driver = GraphDatabase.driver(neo4j_uri, auth=(neo4j_user, neo4j_password))
