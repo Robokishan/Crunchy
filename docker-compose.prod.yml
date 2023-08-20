@@ -35,7 +35,6 @@ services:
   crawler:
     container_name: crawler
     image: "robokishan/crunchy:crawler"
-    restart: always
     env_file:
       - ${ENV_FILE}
     depends_on:
@@ -58,6 +57,7 @@ services:
   ui:
     container_name: ui
     image: "robokishan/crunchy:ui"
+    restart: always
     ports:
       - "5051:80"
     env_file:
