@@ -59,18 +59,18 @@ services:
     links: 
         - rabbitmq
 
-    databucket:
-      container_name: bucket
-      image: "robokishan/crunchy:rest"
-      command: bash -c "./wait_and_exec.sh python manage.py gather_data_from_kafka"
-      restart: always
-      env_file:
-        - ${ENV_FILE}
-      depends_on:
-        rabbitmq:
-          condition: service_healthy
-      links: 
-          - rabbitmq
+  databucket:
+    container_name: bucket
+    image: "robokishan/crunchy:rest"
+    command: bash -c "./wait_and_exec.sh python manage.py gather_data_from_kafka"
+    restart: always
+    env_file:
+      - ${ENV_FILE}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    links: 
+        - rabbitmq
 
   ui:
     container_name: ui
