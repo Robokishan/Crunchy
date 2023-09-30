@@ -35,7 +35,6 @@ services:
   crawler:
     container_name: crawler
     image: "robokishan/crunchy:crawler"
-    command: bash -c "./wait_and_exec.sh python3 ./CrunchyCrawler/go-crunchy.py
     env_file:
       - ${ENV_FILE}
     depends_on:
@@ -48,7 +47,7 @@ services:
     container_name: api
     image: "robokishan/crunchy:rest"
     restart: always
-    command: bash -c "./wait_and_exec.sh python manage.py runserver 0.0.0.0:8000"
+    command: bash -c "python manage.py runserver 0.0.0.0:8000"
     ports:
       - "8001:8000"
     env_file:
@@ -62,7 +61,7 @@ services:
     databucket:
       container_name: bucket
       image: "robokishan/crunchy:rest"
-      command: bash -c "./wait_and_exec.sh python manage.py gather_data_from_kafka"
+      command: bash -c "python manage.py gather_data_from_kafka"
       restart: always
       env_file:
         - ${ENV_FILE}
