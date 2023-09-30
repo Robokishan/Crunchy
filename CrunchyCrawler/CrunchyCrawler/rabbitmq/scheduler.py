@@ -36,8 +36,8 @@ class Scheduler(object):
         self.dupefilter_key = dupefilter_key
         self.idle_before_close = idle_before_close
         self.stats = None
-        self.counter = 20
-        self.threshold = 20
+        self.counter = 0
+        self.threshold = 60
         print("Using custom scheduler")
 
     def __len__(self):
