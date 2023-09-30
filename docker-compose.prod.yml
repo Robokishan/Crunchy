@@ -35,7 +35,7 @@ services:
   crawler:
     container_name: crawler
     image: "robokishan/crunchy:crawler"
-    command: bash -c "./wait-for-it.sh rabbitmq:5672 python3 ./go-crunchy.py"
+    command: bash -c "./wait-for-it.sh rabbitmq:5672 -- python3 ./go-crunchy.py"
     env_file:
       - ${ENV_FILE}
     depends_on:
