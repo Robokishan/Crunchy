@@ -6,7 +6,7 @@ settings = get_project_settings()
 
 queue_name = settings.get(
     'RB_MAIN_QUEUE')
-connection_dsn = settings.get('RABBITMQ_URL')
+connection_dsn = settings.get('RABBITMQ_URL') + '?heartbeat=0'
 exchange = settings.get('RB_MAIN_EXCHANGE')
 routing_key = settings.get('RB_MAIN_ROUTING_KEY')
 
