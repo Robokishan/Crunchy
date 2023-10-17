@@ -106,18 +106,18 @@ services:
       timeout: 10s
       retries: 5
     
-  portainer:
-    container_name: portainer
-    image: 'portainer/portainer:latest'
-    logging:
-      options: {max-size: 5m}
-    ports:
-      - '9000:9000'
-      - '8000:8000'
-    restart: always
-    volumes:
-      - '/var/run/docker.sock:/var/run/docker.sock'
-      - 'portainer_data:/data'
+  # portainer:
+  #   container_name: portainer
+  #   image: 'portainer/portainer:latest'
+  #   logging:
+  #     options: {max-size: 5m}
+  #   ports:
+  #     - '9000:9000'
+  #     - '8000:8000'
+  #   restart: always
+  #   volumes:
+  #     - '/var/run/docker.sock:/var/run/docker.sock'
+  #     - 'portainer_data:/data'
 
   # watchtower:
   #   command: 'crawler api ui bucket --interval 86400 --debug --remove-volumes --cleanup --include-restarting'
