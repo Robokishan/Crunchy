@@ -51,4 +51,4 @@ class Subscriber:
                     if self.callback(data) == True:
                         self.consumer.commit(message=msg, asynchronous=False)
                 except Exception as e:
-                    print.info(e)
+                    print(e)
