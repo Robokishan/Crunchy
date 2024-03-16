@@ -1,11 +1,16 @@
 pipeline {
-    agent {
-        docker { image 'node:20.11.1-alpine3.19' }
-    }
+    agent any
     stages {
-        stage('Test') {
+        stage('Building') {
             steps {
-                sh 'node --version'
+                dir('CrunchyCrawler') {
+                  sh "docker build -t robokishan/crunchy:crawler -f Dockerfile ."
+                }
+            }
+        }
+        stage('push') {
+            steps {
+                sh "docker image push robokishan/crunchy:crawler"
             }
         }
     }
