@@ -1,21 +1,53 @@
 pipeline {
     agent any
+
+    parameters {
+        choice(name: 'SERVICE_NAME', choices: ['crawler', 'api'], description: 'Select service to build')
+    }
+
     environment {     
       DOCKERHUB_CREDENTIALS= credentials('dockerhubcredentials')     
     } 
     stages {
         stage('Building') {
             steps {
-                dir('CrunchyCrawler') {
-                  sh "docker build -t robokishan/crunchy:crawler -f Dockerfile ."
+                scripts {
+                  def serviceName = params.SERVICE_NAME
+
+                  if(serviceName == 'crawler') {
+                    dir('CrunchyCrawler') {
+                      sh "docker build -t robokishan/crunchy:crawler -f Dockerfile ."
+                    }
+                  } else if (serviceName == 'api') {
+                    dir('CrunchyRest') {
+                      sh "docker build -t robokishan/crunchy:rest -f Dockerfile ."
+                    }
+                  } else {
+                      echo "Invalid service selected"
+                      currentBuild.result = 'FAILURE'
+                      return
+                  }
                 }
+                
             }
         }
         stage('push') {
             steps {
+              script {
                 sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'                 
                 echo 'Login Completed'                
-                sh "docker image push robokishan/crunchy:crawler"
+                def serviceName = params.SERVICE_NAME
+                if (serviceName == 'crawler') {
+                  sh "docker image push robokishan/crunchy:crawler"
+                } else if(serviceName == 'api') {
+                  sh "docker image push robokishan/crunchy:rest" 
+                } else {
+                    echo "Invalid service selected"
+                    currentBuild.result = 'FAILURE'
+                    return
+                  }
+              }
+                
             }
         }
     }
