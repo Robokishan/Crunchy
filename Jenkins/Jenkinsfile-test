@@ -11,7 +11,7 @@ pipeline {
     stages {
         stage('Building') {
             steps {
-                scripts {
+                script {
                   def serviceName = params.SERVICE_NAME
 
                   if(serviceName == 'crawler') {
