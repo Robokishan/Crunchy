@@ -13,7 +13,7 @@ pipeline {
             steps {
                 script {
                   def serviceName = params.SERVICE_NAME
-
+                  echo "Building: ${params.SERVICE_NAME}"
                   if(serviceName == 'crawler') {
                     dir('CrunchyCrawler') {
                       sh "docker build -t robokishan/crunchy:crawler -f Dockerfile ."
