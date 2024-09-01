@@ -107,6 +107,24 @@ services:
       interval: 5s
       timeout: 10s
       retries: 5
+  
+
+  neo4j:
+    container_name: graphdb
+    image: "neo4j:5.10.0-community-bullseye"
+    restart: always
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      - NEO4J_AUTH=neo4j/Abcd@1234
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - neo4j_import:/var/lib/neo4j/import
+      - neo4j_plugins:/plugins
+
+
   # mongodb:
   #   image: "mongo:5.0"
   #   restart: always
@@ -116,3 +134,7 @@ services:
 volumes:
   rabbitmq_data:
   rabbitmq_log:
+  neo4j_data:
+  neo4j_logs:
+  neo4j_import:
+  neo4j_plugins:

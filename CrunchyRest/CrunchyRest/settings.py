@@ -49,7 +49,8 @@ INSTALLED_APPS = [
     'databucket',
     'public',
     'rabbitmq',
-    'api'
+    'api',
+    'knowledgeGraph',
 ]
 
 MIDDLEWARE = [
@@ -180,3 +181,6 @@ RABBITMQ_URL = config('RABBITMQ_URL', cast=str)
 RB_MAIN_EXCHANGE = config('RABBIT_MQ_MAIN_EXCHANGE', cast=str)
 RB_MAIN_ROUTING_KEY = config('RABBIT_MQ_MAIN_ROUTING_KEY', cast=str)
 RB_MAIN_QUEUE = config('RABBIT_MQ_MAIN_QUEUE', cast=str)
+NEO4J_RESOURCE_URI=config('NEO4J_RESOURCE_URI', cast=str)
+NEO4J_USERNAME=config('NEO4J_USERNAME', cast=str)
+NEO4J_PASSWORD=config('NEO4J_PASSWORD', cast=str)
