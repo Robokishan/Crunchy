@@ -1,17 +1,12 @@
 from django.core.management import BaseCommand
+from django.conf import settings
 from neo4j import GraphDatabase
 from databucket.serializer import CrunchbaseSerializer
 from databucket.models import Crunchbase
 from tqdm import tqdm
 
-
-# Define your Neo4j connection credentials
-neo4j_uri = "neo4j://localhost:7687"  # Replace with your Neo4j server URI
-neo4j_user = "neo4j"   # Replace with your Neo4j username
-neo4j_password = "Abcd@1234567890"  # Replace with your Neo4j password
-
 # Create a Neo4j driver instance
-driver = GraphDatabase.driver(neo4j_uri, auth=(neo4j_user, neo4j_password))
+driver = GraphDatabase.driver(settings.NEO4J_RESOURCE_URI, auth=(settings.NEO4J_USERNAME, settings.NEO4J_PASSWORD))
 
 
 class Command(BaseCommand):
@@ -28,7 +23,7 @@ class Command(BaseCommand):
         print("exporting Relations to neo4j")
         with driver.session() as session:
             print("Saving Data to Neo4j")
-            for index, _company in tqdm(enumerate(serialized_data), total=len(serialized_data)):
+            for index, _company in tqdm(enumerate(serialized_data), total=len(serialized_data), ascii=' ='):
                 # print("Company",_company)
                 if _company.get('similar_companies') and _company.get('industries'):
                     # print('-----------')

@@ -4,6 +4,8 @@ from databucket.serializer import CrunchbaseSerializer
 from databucket.models import Crunchbase
 from bson import ObjectId
 from django.db.models import Q
+from knowledgeGraph import db
+
 
 
 @api_view(['GET'])
@@ -62,3 +64,45 @@ def getCompanies(request):
         serialized_data = CrunchbaseSerializer(
             queryset, many=True).data
         return Response(serialized_data)
+
+
+
+@api_view(['GET'])
+def search(request):
+    company = request.GET.get("company", None)
+    founder = request.GET.get("founder", None)
+    industry = request.GET.get("industry", None)
+    key = request.GET.get("key", None)
+
+    if industry and key == "company": 
+        val = db.get_companies_by_industry(industry)
+        return Response(val)
+    elif industry and key == "founder":
+        val = db.get_founders_by_industry(industry)
+        return Response(val)
+    elif industry and key == "industry":
+        val = db.get_industry_by_industry(industry)
+        return Response(val)
+    
+    elif founder and key == "company":
+        val = db.get_companies_by_founder(founder)
+        return Response(val)
+    elif founder and key == "founder":
+        val = db.get_founders_by_founder(founder)
+        return Response(val)
+    elif founder and key == "industry":
+        val = db.get_industry_by_founder(founder)
+        return Response(val)
+    
+    elif company and key == "company":
+        val = db.get_companies_by_company(company)
+        return Response(val)
+    elif company and key == "founder":
+        val = db.get_founders_by_company(company)
+        return Response(val)
+    elif company and key == "industry":
+        val = db.get_industries_by_company(company)
+        return Response(val)
+
+    else:
+        return Response("No search query", status=400)
