@@ -10,7 +10,6 @@ import { type CompayDetail } from "~/utils/types";
 import SearchInput from "../SearchInput";
 import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/solid";
 import ExportToNotion from "../ExportNotionModal";
-import axios from "axios";
 
 export const CompanyDetails = ({
   isLoading = false,
@@ -31,13 +30,6 @@ export const CompanyDetails = ({
     },
     [modalIsOpen]
   );
-
-  useEffect(() => {
-    axios
-      .get("/api/notion/retrieve")
-      .then((response) => console.log(response))
-      .catch((err) => console.error(err));
-  }, []);
 
   const columns = useMemo<MRT_ColumnDef<CompayDetail>[]>(
     () => [

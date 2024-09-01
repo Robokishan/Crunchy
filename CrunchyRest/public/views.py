@@ -68,7 +68,7 @@ def getCompanies(request):
 
 
 @api_view(['GET'])
-def search(request):
+def connection(request):
     company = request.GET.get("company", None)
     founder = request.GET.get("founder", None)
     industry = request.GET.get("industry", None)

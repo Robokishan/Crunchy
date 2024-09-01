@@ -3,5 +3,5 @@ from public import views
 
 urlpatterns = [
     path('comp', views.getCompanies),
-    path('search', views.search),
+    path('connection', views.connection),
 ]
