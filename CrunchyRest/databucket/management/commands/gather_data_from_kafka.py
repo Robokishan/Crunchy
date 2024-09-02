@@ -65,6 +65,8 @@ class Command(BaseCommand):
                     'name': data.get('name'),
                     'funding': data.get('funding'),
                     'website': data.get('website'),
+                    'funding_usd': data.get('funding_usd'),
+                    'rate': data.get('rate'),
                     'logo': data.get('logo'),
                     'founders': data.get('founders', []),
                     'similar_companies': data.get('similar_companies', []),
