@@ -97,6 +97,37 @@ class CurrencyConverter:
 
 currencyConvert = CurrencyConverter() 
 
+def get_currency_in_usd(funding):
+    currency_symbol = currencyConvert.get_currency_symbol(funding)
+    currency_code = None
+    currency_amount = None
+
+    # handle currency with symbols
+    if len(currency_symbol) > 0:
+        currency_symbol = currency_symbol[-1]
+        amount_str = funding.split(currency_symbol)[-1]
+        # sample $1.5M, €1.5M, £1.5M, ¥1.5M, ₹1.5M
+        match = re.match(r'([\d\.]+)([A-Za-z]?)', amount_str)
+        if match:
+            number, multiplier = match.groups()
+            currency_amount = float(number) * currencyConvert.get_multiplier(multiplier)
+            currency_code = currencyConvert.symbol_to_currency_code(currency_symbol)
+
+    # handle currency with currency code
+    elif funding and funding != '—':
+        # sample USD1.5M, EUR1.5M, GBP1.5M, JPY1.5M, INR1.5M
+        currency_code_pattern = re.compile(r'([A-Z]{3})(\d+(\.\d+)?)([A-Za-z]?)')
+        match = currency_code_pattern.match(funding)
+        if match:    
+            currency_code, amount, _, suffix = match.groups()
+            currency_amount = float(amount) * currencyConvert.get_multiplier(suffix)
+            currency_code = pycountry.currencies.get(alpha_3=currency_code).alpha_3
+    
+    if currency_amount and currency_code:
+        currency_amount_usd, rate = currencyConvert.convert(currency_amount, currency_code,'USD')
+        return currency_amount_usd, rate, currency_code, currency_amount
+    return None
+
 # Open the CSV file
 with open(csv_file, 'r') as file:
     # Create a CSV reader object
@@ -110,35 +141,15 @@ with open(csv_file, 'r') as file:
     for row in csv_reader:
         # Access the "funding" column in each row
         funding = row[funding_index]
-        currency_symbol = currencyConvert.get_currency_symbol(funding)
-        currency_code = None
-        currency_amount = None
-
-        # handle currency with symbols
-        if len(currency_symbol) > 0:
-            currency_symbol = currency_symbol[-1]
-            amount_str = funding.split(currency_symbol)[-1]
-            # sample $1.5M, €1.5M, £1.5M, ¥1.5M, ₹1.5M
-            match = re.match(r'([\d\.]+)([A-Za-z]?)', amount_str)
-            number, multiplier = match.groups()
-            currency_amount = float(number) * currencyConvert.get_multiplier(multiplier)
-            currency_code = currencyConvert.symbol_to_currency_code(currency_symbol)
-
-        # handle currency with currency code
-        elif funding and funding != '—':
-            # sample USD1.5M, EUR1.5M, GBP1.5M, JPY1.5M, INR1.5M
-            currency_code_pattern = re.compile(r'([A-Z]{3})(\d+(\.\d+)?)([A-Za-z]?)')
-            match = currency_code_pattern.match(funding)
-            currency_code, amount, _, suffix = match.groups()
-            currency_amount = float(number) * currencyConvert.get_multiplier(multiplier)
-            currency_code = pycountry.currencies.get(alpha_3=currency_code).alpha_3
         
-        if currency_amount and currency_code:
-            try:
-                currency_amount_usd, rate = currencyConvert.convert(currency_amount, currency_code,'USD')
-                print(currency_amount, rate, currency_code, currency_amount_usd)
-            except Exception as e:
-                print(f"Error converting {currency_amount} {currency_code} to USD: {e}")
+        result = get_currency_in_usd(funding)
+        if result is not None:
+            currency_amount_usd, rate, currency_code, currency_amount = result
+            print(currency_amount_usd, rate, currency_code, currency_amount)
+
+
+
+        
                 
             
         
