@@ -68,7 +68,7 @@ class Producer:
         print("Connected")
     
     def publish(self, data):
-        print(self.producer.produce(settings.KAFKA_CRUNCHBASE_DATABUCKET_TOPIC, data.encode('utf-8')))
+        self.producer.produce(settings.KAFKA_CRUNCHBASE_DATABUCKET_TOPIC, data.encode('utf-8'))
         self.producer.flush()
         
 
