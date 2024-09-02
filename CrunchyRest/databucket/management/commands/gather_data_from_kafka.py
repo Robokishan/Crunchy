@@ -58,6 +58,9 @@ class Command(BaseCommand):
                 else:
                     data['funding_usd'] = 0
                     data['rate'] = 0
+            else:
+                data['funding_usd'] = 0
+                data['rate'] = 0
                 
             crunchbase, created = Crunchbase.objects.update_or_create(
                 crunchbase_url=data['crunchbase_url'],
