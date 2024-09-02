@@ -2,6 +2,7 @@ export interface CompayDetail {
     _id: string;
     name: string;
     funding: string;
+    funding_usd: number;
     website: string;
     crunchbase_url: string;
     logo: string;
