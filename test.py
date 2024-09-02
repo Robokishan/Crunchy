@@ -14,6 +14,7 @@ class CurrencyConverter:
     rates = None
     TMP_FOLDER = '/tmp'
     TMP_FILE = 'rates.json'
+    next_update = None
 
     def __init__(self):
         # read rates from file
@@ -21,6 +22,7 @@ class CurrencyConverter:
         try:
             with open(self.tmpFile, 'r') as f:
                 self.rates = json.load(f)
+            self.next_update = self.rates['time_next_update_unix']
         except Exception as e:
             print(e)
         
@@ -31,6 +33,9 @@ class CurrencyConverter:
             self.rates = self.rates['rates']
 
     def getRate(self, currency):
+        print(self.next_update, time.time())
+        if self.next_update < time.time():
+            self.rates = self._get_rates()
         return self.rates.get(currency, None)
     
     def convert(self, amount, from_currency, to_currency):
@@ -54,6 +59,7 @@ class CurrencyConverter:
                 # save rates to file
                 with open(self.tmpFile, 'w') as f:
                     json.dump(data, f)
+                self.next_update = data['time_next_update_unix']
                 return data['rates']
             except Exception as e:
                 print(f"Error retrieving rates: {e}")
