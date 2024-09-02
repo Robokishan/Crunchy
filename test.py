@@ -1,47 +1,96 @@
 import csv
 import regex as re
 import pycountry
-from currency_converter import CurrencyConverter
 from babel import Locale
-from datetime import datetime
-
-currencyRates = CurrencyConverter()
-
-def create_reverse_currency_mapping(locale_str):
-    locale = Locale.parse(locale_str)
-    currency_symbols = locale.currency_symbols
-    reverse_mapping = {symbol: code for code, symbol in currency_symbols.items()}
-    return reverse_mapping
-
-def symbol_to_currency_code(symbol, locale_str='en_US'):
-    reverse_mapping = create_reverse_currency_mapping(locale_str)
-    return reverse_mapping.get(symbol, None)
-
-
-pattern = r'\p{Sc}'
+import requests
+import json
+import time
 
 # Specify the path to your CSV file
 csv_file = '/Users/kishan/Work/CrunchyScrapper/crunchy.databucket_crunchbase.csv'
 
-def convert_to_usd(amount, currency_code):
-    last_date = currencyRates.bounds[currency_code].last_date
-    r0 = currencyRates._get_rate(currency_code, last_date)
-    r1 = currencyRates._get_rate('USD', last_date)
-    exchangeRate =  round(1 / r0 * r1, 4)
-    return currencyRates.convert(amount, currency_code,'USD'), exchangeRate
+class CurrencyConverter:
+    url = 'https://open.er-api.com/v6/latest/USD'
+    rates = None
+    TMP_FOLDER = '/tmp'
+    TMP_FILE = 'rates.json'
 
-def get_multiplier(multiplier):
-    multiplier = multiplier.upper()
-    if multiplier == 'M':
-        return 1e6
-    elif multiplier == 'B':
-        return 1e9
-    elif multiplier == 'K':
-        return 1e3
-    elif multiplier == '':
-        return 1
-    else:
-        raise ValueError(f"Invalid multiplier: {multiplier}")
+    def __init__(self):
+        # read rates from file
+        self.tmpFile = f'{self.TMP_FOLDER}/{self.TMP_FILE}'
+        try:
+            with open(self.tmpFile, 'r') as f:
+                self.rates = json.load(f)
+        except Exception as e:
+            print(e)
+        
+        # if rates are old or not present, fetch new rates
+        if self.rates is None or self.rates['time_next_update_unix'] < time.time():
+            self.rates = self._get_rates()
+        else:
+            self.rates = self.rates['rates']
+
+    def getRate(self, currency):
+        return self.rates.get(currency, None)
+    
+    def convert(self, amount, from_currency, to_currency):
+        if from_currency == to_currency:
+            return round(amount,2), 1
+        from_rate = self.getRate(from_currency)
+        to_rate = self.getRate(to_currency)
+        if from_rate is None or to_rate is None:
+            raise Exception("Invalid currency")
+        return round((amount * to_rate / from_rate), 2), round((1 * from_rate / to_rate), 6)
+    
+    def _get_rates(self):
+        max_retries = 5
+        retries = 0
+        delay = 1
+        while retries < max_retries:
+            try:
+                print("Fetching rates...")
+                response = requests.get(self.url)
+                data = response.json()
+                # save rates to file
+                with open(self.tmpFile, 'w') as f:
+                    json.dump(data, f)
+                return data['rates']
+            except Exception as e:
+                print(f"Error retrieving rates: {e}")
+                retries += 1
+                delay *= 2
+                if retries > max_retries:
+                    raise Exception("Failed to retrieve rates")
+                time.sleep(delay)
+            
+    def get_currency_symbol(self, str):
+        return re.findall(r'\p{Sc}', str)
+    
+    def create_reverse_currency_mapping(self, locale_str):
+        locale = Locale.parse(locale_str)
+        currency_symbols = locale.currency_symbols
+        reverse_mapping = {symbol: code for code, symbol in currency_symbols.items()}
+        return reverse_mapping
+
+    def symbol_to_currency_code(self, symbol, locale_str='en_US'):
+        reverse_mapping = self.create_reverse_currency_mapping(locale_str)
+        return reverse_mapping.get(symbol, None)
+    
+    def get_multiplier(self, multiplier):
+        multiplier = multiplier.upper()
+        if multiplier == 'M':
+            return 1e6
+        elif multiplier == 'B':
+            return 1e9
+        elif multiplier == 'K':
+            return 1e3
+        elif multiplier == '':
+            return 1
+        else:
+            raise ValueError(f"Invalid multiplier: {multiplier}")
+
+
+currencyConvert = CurrencyConverter() 
 
 # Open the CSV file
 with open(csv_file, 'r') as file:
@@ -56,7 +105,7 @@ with open(csv_file, 'r') as file:
     for row in csv_reader:
         # Access the "funding" column in each row
         funding = row[funding_index]
-        currency_symbol = re.findall(pattern, funding)
+        currency_symbol = currencyConvert.get_currency_symbol(funding)
         currency_code = None
         currency_amount = None
 
@@ -64,23 +113,25 @@ with open(csv_file, 'r') as file:
         if len(currency_symbol) > 0:
             currency_symbol = currency_symbol[-1]
             amount_str = funding.split(currency_symbol)[-1]
+            # sample $1.5M, €1.5M, £1.5M, ¥1.5M, ₹1.5M
             match = re.match(r'([\d\.]+)([A-Za-z]?)', amount_str)
             number, multiplier = match.groups()
-            currency_amount = float(number) * get_multiplier(multiplier)
-            currency_code = symbol_to_currency_code(currency_symbol)
+            currency_amount = float(number) * currencyConvert.get_multiplier(multiplier)
+            currency_code = currencyConvert.symbol_to_currency_code(currency_symbol)
 
         # handle currency with currency code
         elif funding and funding != '—':
+            # sample USD1.5M, EUR1.5M, GBP1.5M, JPY1.5M, INR1.5M
             currency_code_pattern = re.compile(r'([A-Z]{3})(\d+(\.\d+)?)([A-Za-z]?)')
             match = currency_code_pattern.match(funding)
             currency_code, amount, _, suffix = match.groups()
-            currency_amount = float(number) * get_multiplier(multiplier)
+            currency_amount = float(number) * currencyConvert.get_multiplier(multiplier)
             currency_code = pycountry.currencies.get(alpha_3=currency_code).alpha_3
         
         if currency_amount and currency_code:
             try:
-                currency_amount_usd, exchangeRate = convert_to_usd(currency_amount, currency_code)
-                # print(currency_amount, exchangeRate,  currency_code, currency_amount_usd)
+                currency_amount_usd, rate = currencyConvert.convert(currency_amount, currency_code,'USD')
+                print(currency_amount, rate, currency_code, currency_amount_usd)
             except Exception as e:
                 print(f"Error converting {currency_amount} {currency_code} to USD: {e}")
                 
