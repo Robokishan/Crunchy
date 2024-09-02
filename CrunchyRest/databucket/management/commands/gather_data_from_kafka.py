@@ -55,6 +55,9 @@ class Command(BaseCommand):
                     currency_amount_usd, rate, _, _ = result
                     data['funding_usd'] = currency_amount_usd
                     data['rate'] = rate
+                else:
+                    data['funding_usd'] = 0
+                    data['rate'] = 0
                 
             crunchbase, created = Crunchbase.objects.update_or_create(
                 crunchbase_url=data['crunchbase_url'],
