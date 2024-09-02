@@ -24,13 +24,14 @@ class CurrencyConverter:
                 self.rates = json.load(f)
             self.next_update = self.rates['time_next_update_unix']
         except Exception as e:
-            print(e)
-        
-        # if rates are old or not present, fetch new rates
-        if self.rates is None or self.rates['time_next_update_unix'] < time.time():
-            self.rates = self._get_rates()
-        else:
-            self.rates = self.rates['rates']
+            # ignore if file not found
+            pass
+        finally:
+            # if rates are old or not present, fetch new rates
+            if self.rates is None or self.rates['time_next_update_unix'] < time.time():
+                self.rates = self._get_rates()
+            else:
+                self.rates = self.rates['rates']
 
     def getRate(self, currency):
         if self.next_update < time.time():
