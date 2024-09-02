@@ -7,6 +7,8 @@ class Crunchbase(models.Model):
     _id = models.ObjectIdField()
     name = models.TextField()
     funding = models.TextField()
+    funding_usd = models.FloatField()
+    rate = models.FloatField()
     website = models.URLField()
     crunchbase_url = models.URLField()
     logo = models.URLField()
@@ -21,3 +23,4 @@ class Crunchbase(models.Model):
     founded = models.TextField()
     lastfunding = models.TextField()
     stocksymbol = models.TextField()
+    
