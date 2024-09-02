@@ -33,7 +33,6 @@ class CurrencyConverter:
             self.rates = self.rates['rates']
 
     def getRate(self, currency):
-        print(self.next_update, time.time())
         if self.next_update < time.time():
             self.rates = self._get_rates()
         return self.rates.get(currency, None)
