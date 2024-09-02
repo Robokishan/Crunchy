@@ -79,6 +79,11 @@ export const CompanyDetails = ({
         Cell: ({ cell }) => <>{cell.getValue() ?? "-"}</>,
       },
       {
+        accessorKey: "funding_usd",
+        header: "Funding USD",
+        Cell: ({ cell }) => <>{cell.getValue() ?? "-"}</>,
+      },
+      {
         accessorKey: "acquired",
         header: "Acquired",
         Cell: ({ cell }) => <>{cell.getValue() ?? "-"}</>,

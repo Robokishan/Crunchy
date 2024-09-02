@@ -26,8 +26,8 @@ def get_founders_by_industry(industry):
     q = f'''
         MATCH (i:Industry)<-[:IN_INDUSTRY]-(c:Company)-[:FOUNDED_BY]-(t:Founder)
         WHERE i.name =~ '(?i).*{industry}.*'
-        WITH DISTINCT t, c, c.funding AS companyFunding
-        RETURN t.name as founder, c.name AS company, c.crunchbase_url AS url, c.funding AS companyFunding
+        WITH DISTINCT t, c, c.funding AS companyFunding, i.name as via
+        RETURN t.name as founder, via, c.name AS company, c.crunchbase_url AS url, c.funding AS companyFunding
         ORDER BY companyFunding DESC
         '''
     with manager.session as s:

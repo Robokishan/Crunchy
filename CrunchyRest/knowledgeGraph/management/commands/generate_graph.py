@@ -38,7 +38,7 @@ class Command(BaseCommand):
                             company.description = $description
                         """
                         company = tx.run(create_company_query, mongoId=_company.get('_id'),
-                            name=_company.get('name'), funding=_company.get('funding'),
+                            name=_company.get('name'), funding=_company.get('funding_usd', 0) or 0,
                             website=_company.get('website'), crunchbase_url=_company.get('crunchbase_url'),
                             logo=_company.get('logo'), description=_company.get('description'))
                         # print("Company node created:", company)  # Print the company variable

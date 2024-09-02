@@ -1,4 +1,4 @@
-from confluent_kafka import Consumer
+from confluent_kafka import Consumer, Producer as KafkaProducer
 import json
 from django.conf import settings
 
@@ -52,3 +52,24 @@ class Subscriber:
                         self.consumer.commit(message=msg, asynchronous=False)
                 except Exception as e:
                     print(e)
+
+
+class Producer:
+    def connect(self):
+        producer_conf = {
+            'bootstrap.servers': settings.KAFKA_SERVER,
+            'sasl.mechanism': settings.KAFKA_SASL_MECHANISM,
+            'security.protocol': 'SASL_SSL',
+            'sasl.username': settings.KAFKA_USERNAME,
+            'sasl.password': settings.KAFKA_PASSWORD
+        }
+        print("Connecting to Kafka...")
+        self.producer = KafkaProducer(producer_conf)
+        print("Connected")
+    
+    def publish(self, data):
+        self.producer.produce(settings.KAFKA_CRUNCHBASE_DATABUCKET_TOPIC, data.encode('utf-8'))
+        self.producer.flush()
+        
+
+
