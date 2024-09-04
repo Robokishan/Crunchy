@@ -1,5 +1,5 @@
 import time
-from .connection import from_settings
+from .connection import get_channels
 from scrapy.dupefilters import BaseDupeFilter
 from scrapy.utils.request import request_fingerprint
 
@@ -21,7 +21,7 @@ class RFPDupeFilter(BaseDupeFilter):
 
     @classmethod
     def from_settings(cls, settings):
-        server = from_settings()
+        server = get_channels()
         # create one-time key. needed to support to use this
         # class as standalone dupefilter with scrapy's default scheduler
         # if scrapy passes spider on open() method this wouldn't be needed

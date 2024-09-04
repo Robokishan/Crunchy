@@ -1,6 +1,6 @@
 from confluent_kafka import Producer
 import json
-from CrunchyCrawler.rabbitmq.connection import from_settings
+from CrunchyCrawler.rabbitmq.connection import get_channels
 from scrapy.exceptions import DropItem
 
 
@@ -40,13 +40,18 @@ class KafkaPipeline:
 
 
 class RabbitMQPipeline:
-    def __init__(self, channel):
+    def __init__(self, channel, priority_channel):
         self.channel = channel
+        self.priority_channel = priority_channel
+        self.channels = {
+            'normal': self.channel,
+            'priority': self.priority_channel,
+        }
 
     @classmethod
     def from_crawler(cls, crawler):
-        channel = from_settings()
-        return cls(channel)
+        channel, priority_channel = get_channels()
+        return cls(channel, priority_channel)
 
     def open_spider(self, spider):
         pass
@@ -60,20 +65,23 @@ class RabbitMQPipeline:
         try:
             response = item['_response']
             delivery_tag = item.get('delivery_tag')
+            queue = item.get('queue')
+            channel = self.channels.get(queue)
             print("RabbitMQ Pipeline", response, item)
             if delivery_tag:
                 print({"response": response})
                 if response == 200:
                     print("RabbitMQ Sent ack", delivery_tag)
-                    self.channel.basic_ack(delivery_tag=delivery_tag)
+                    channel.basic_ack(delivery_tag=delivery_tag)
                 else:
                     print("RabbitMQ Sent nack", delivery_tag)
-                    self.channel.basic_nack(
+                    channel.basic_nack(
                         delivery_tag=delivery_tag, requeue=True)
                     raise DropItem(
                         f"Item dropped due to unsuccessful response. URL: {item.get('crunchbase_url')}, Status Code: {response}")
                 del item['_response']
                 del item['delivery_tag']
+                del item['queue']
         except Exception as e:
             print("Error from RabbitMQ Pipeline", e)
             raise DropItem(

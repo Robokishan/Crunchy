@@ -16,7 +16,8 @@ def createCrawl(request):
             urls = serializer.validated_data['url']
             for message in urls:
                 print('URL Sent to RabbitMQ', message)
-                RabbitMQManager.publish_message(message)
+                RabbitMQManager.publish_priority_message(message)
+                # RabbitMQManager.publish_message(message)
             return Response("Sent")
         else:
             return Response(serializer.errors, status=400)

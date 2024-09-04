@@ -111,11 +111,55 @@ class MainQueue():
 
     def _decode_request(self, encoded_request, delivery_tag):
         """Decode an request previously encoded"""
-        return generateRequest(encoded_request, delivery_tag)
+        return generateRequest(encoded_request, delivery_tag, queue="normal")
 
     def clear(self):
         """Clear queue/stack"""
         self.server.queue_purge(self.key)
+
+class PriorityQueue():
+
+    def __init__(self, server, spider, key=None, exchange=None):
+        """Initialize per-spider RabbitMQ queue.
+        Parameters:
+            server -- rabbitmq connection
+            spider -- spider instance
+            key -- key for this queue (e.g. "%(spider)s:queue")
+        """
+        self.server = server
+        self.spider = spider
+
+        # key is just queue name
+        self.key = key
+        print("Priority queue", self.key)
+
+    def __len__(self):
+        response = self.server.queue_declare(
+            self.key, passive=True)
+        return response.method.message_count
+
+    def push(self, request):
+        pass
+
+    def pop(self):
+        method_frame, header, body = self.server.basic_get(queue=self.key)
+        print("Response from priority queue", body, method_frame, header, self.key)
+        if body != None:
+            return self._decode_request(body.decode('utf-8'), method_frame.delivery_tag)
+
+    # i don't think this will require
+    def _encode_request(self, request):
+        """Encode a request object"""
+        return pickle.dumps(request_to_dict(request, self.spider))
+
+    def _decode_request(self, encoded_request, delivery_tag):
+        """Decode an request previously encoded"""
+        return generateRequest(encoded_request, delivery_tag, queue="priority")
+
+    def clear(self):
+        """Clear queue/stack"""
+        self.server.queue_purge(self.key)
+
 
     
 
