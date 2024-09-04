@@ -1,4 +1,4 @@
-from CrunchyCrawler.rabbitmq.connection import from_settings
+from CrunchyCrawler.rabbitmq.connection import get_channels
 from CrunchyCrawler.agents import AGENTS
 import random
 
@@ -22,13 +22,19 @@ class CrunchyUserAgentMiddleware(object):
         print(f"Selected agent: {agent}")
 
 class RabbitMQMiddleware(object):
-    def __init__(self, channel):
+    def __init__(self, channel, priority_channel):
         self.channel = channel
+        self.priority_channel = priority_channel
+        self.channels = {
+            'normal': channel,
+            'priority': priority_channel,
+        }
+
 
     @classmethod
     def from_crawler(cls, crawler):
-        channel = from_settings()
-        return cls(channel)
+        channel, priority_channel = get_channels()
+        return cls(channel, priority_channel)
     
     # only send ack or nack incase of final result
     def process_response(self, request, response, spider):
@@ -37,29 +43,38 @@ class RabbitMQMiddleware(object):
 
     def process_exception(self, request, exception, spider):
         delivery_tag = request.meta.get('delivery_tag')
+        queue = request.meta.get('queue')
         print(f"process_exception: {delivery_tag}", request.meta, exception)
-        self.nack(delivery_tag)
+        self.nack(delivery_tag, queue)
         return None
 
-    def nack(self, delivery_tag):
+    def nack(self, delivery_tag, queue):
         print("RQ:DownloadMiddleware:Sending nack for", delivery_tag)
-        self.channel.basic_nack(delivery_tag=delivery_tag, requeue=True)
+        channel = self.channels.get(queue)
+        channel.basic_nack(delivery_tag=delivery_tag, requeue=True)
 
 class RabbitMQSpiderMiddleware:
-    def __init__(self, channel):
+    def __init__(self, channel, priority_channel):
         self.channel = channel
+        self.priority_channel = priority_channel
+        self.channels = {
+            'normal': channel,
+            'priority': priority_channel,
+        }
 
     @classmethod
     def from_crawler(cls, crawler):
-        channel = from_settings()
-        return cls(channel)
+        channel, priority_channel = get_channels()
+        return cls(channel, priority_channel)
     
-    def nack(self, delivery_tag):
+    def nack(self, delivery_tag, queue):
         print("RQSpider Middleware:Sending nack for", delivery_tag)
-        self.channel.basic_nack(delivery_tag=delivery_tag, requeue=True)
+        channel = self.channels.get(queue)
+        channel.basic_nack(delivery_tag=delivery_tag, requeue=True)
 
     def process_spider_exception(self, response, exception, spider):
         delivery_tag = response.meta.get('delivery_tag', None)
+        queue = response.meta.get('queue')
         print(f"process_spider_exception {delivery_tag}", response.meta, exception, spider)
         if delivery_tag:
-            self.nack(delivery_tag)
+            self.nack(delivery_tag, queue)

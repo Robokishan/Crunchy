@@ -1,5 +1,5 @@
 
-from .connection import from_settings, close
+from .connection import get_channels, close
 from scrapy import Request
 from scrapy.utils.misc import load_object
 from .dupefilter import RFPDupeFilter
@@ -11,6 +11,7 @@ SCHEDULER_PERSIST = True
 QUEUE_KEY = '%(spider)s:requests'
 SPIDER_QUEUE_CLASS = 'CrunchyCrawler.rabbitmq.queue.SpiderQueue'
 MAIN_QUEUE_CLASS = 'CrunchyCrawler.rabbitmq.queue.MainQueue'
+PRIORITY_QUEUE_CLASS = 'CrunchyCrawler.rabbitmq.queue.PriorityQueue'
 DUPEFILTER_KEY = '%(spider)s:dupefilter'
 IDLE_BEFORE_CLOSE = 0
 
@@ -25,14 +26,17 @@ class Scheduler(object):
         'Accept-Language': 'en-US,en;q=0.9',  # this is game changing header
     }
 
-    def __init__(self, server, persist, spider_queue_key, spider_queue_cls, main_queue_key, main_queue_cls, dupefilter_key, idle_before_close, *args, **kwargs):
-        self.server = server
+    def __init__(self, main_channel, priority_channel, persist, spider_queue_key, spider_queue_cls, main_queue_key, main_queue_cls, priority_queue_key, priority_queue_cls, dupefilter_key, idle_before_close, *args, **kwargs):
+        self.main_channel = main_channel
+        self.priority_channel = priority_channel
         # TODO: don't know use of persist
         self.persist = persist
         self.spider_queue_key = spider_queue_key
         self.main_queue_key = main_queue_key
         self.queue_cls = spider_queue_cls
         self.main_queue_cls = main_queue_cls
+        self.priority_queue_cls = priority_queue_cls
+        self.priority_queue_key = priority_queue_key
         self.dupefilter_key = dupefilter_key
         self.idle_before_close = idle_before_close
         self.stats = None
@@ -53,12 +57,17 @@ class Scheduler(object):
         main_queue_key = settings.get('RB_MAIN_QUEUE')
         main_queue_cls = load_object(settings.get(
             'SCHEDULER_MAIN_QUEUE_CLASS', MAIN_QUEUE_CLASS))
+        
+        priority_queue_key = settings.get('RABBIT_MQ_PRIORITY_QUEUE')
+        priority_queue_cls = load_object(settings.get(
+            'SCHEDULER_PRIORITY_QUEUE_CLASS', PRIORITY_QUEUE_CLASS))
+        
 
         dupefilter_key = settings.get('DUPEFILTER_KEY', DUPEFILTER_KEY)
         idle_before_close = settings.get(
             'SCHEDULER_IDLE_BEFORE_CLOSE', IDLE_BEFORE_CLOSE)
-        server = from_settings()
-        return cls(server, persist, spider_queue_key, spider_queue_cls, main_queue_key, main_queue_cls, dupefilter_key, idle_before_close)
+        main_channel, priority_channel = get_channels()
+        return cls(main_channel, priority_channel, persist, spider_queue_key, spider_queue_cls, main_queue_key, main_queue_cls, priority_queue_key, priority_queue_cls, dupefilter_key, idle_before_close)
 
     @classmethod
     def from_crawler(cls, crawler):
@@ -68,9 +77,14 @@ class Scheduler(object):
 
     def open(self, spider):
         self.spider = spider
-        self.queue = self.queue_cls(self.server, spider, self.spider_queue_key)
+
+        # TODO: seprate channels for all queues
+        self.queue = self.queue_cls(self.main_channel, spider, self.spider_queue_key)
         self.main_queue = self.main_queue_cls(
-            self.server, spider, self.main_queue_key)
+            self.main_channel, spider, self.main_queue_key)
+        self.priority_queue = self.priority_queue_cls(
+            self.priority_channel, spider, self.priority_queue_key)
+        
         # self.df = RFPDupeFilter(self.server, self.dupefilter_key % {
         # 'spider': spider.name})
 
@@ -82,7 +96,8 @@ class Scheduler(object):
                        len(self.queue))
 
     def close(self, reason):
-        close(self.server)
+        close(self.main_channel)
+        close(self.priority_channel)
         # if not self.persist:
         #     # self.df.clear()
         #     self.queue.clear()
@@ -102,12 +117,19 @@ class Scheduler(object):
 
         block_pop_timeout = self.idle_before_close
         request = self.queue.pop()
-        print("From Spider queue", request)
-        print("Counter---->>>", self.counter)
+        print("From Spider queue", request, self.main_channel.is_open)
+        print("Counter---->>>", self.counter, self.threshold)
         if request == None:
             if self.counter >= self.threshold:
-                request = self.main_queue.pop()
-                print("From Main queue", request)
+                # after threshold is passed check for priority queue
+                # check if priority channel is connected if not throw error
+                request = self.priority_queue.pop()
+                print("From Priority queue", request, self.priority_channel.is_open)
+
+                # if priority queue is also empty then check main queue
+                if request == None:
+                    request = self.main_queue.pop()
+                    print("From Main queue", request, self.main_channel.is_open)
                 if request != None:
                     self.counter = 0
         print("request --->>>>", request)

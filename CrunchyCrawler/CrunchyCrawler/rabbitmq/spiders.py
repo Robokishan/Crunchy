@@ -2,7 +2,7 @@ from scrapy import Spider
 from scrapy import signals
 from scrapy.exceptions import DontCloseSpider
 
-from CrunchyCrawler.rabbitmq.connection import from_settings
+from CrunchyCrawler.rabbitmq.connection import get_channels
 
 
 class RabbitMQMixin(Spider):
