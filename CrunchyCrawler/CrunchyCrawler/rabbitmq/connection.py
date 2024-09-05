@@ -1,6 +1,6 @@
 import pika
 from scrapy.utils.project import get_project_settings
-
+from loguru import logger
 
 settings = get_project_settings()
 
@@ -34,7 +34,7 @@ priority_channel.queue_bind(queue=priority_queue, exchange=priority_exchange,
                             routing_key=priority_routing_key)
 
 def get_channels():
-    print("Getting RabbitMQ Channel Instance")
+    logger.debug("Getting RabbitMQ Channel Instance")
     return channel, priority_channel
 
 

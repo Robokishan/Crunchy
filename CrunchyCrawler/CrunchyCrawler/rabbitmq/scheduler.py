@@ -4,6 +4,9 @@ from scrapy import Request
 from scrapy.utils.misc import load_object
 from .dupefilter import RFPDupeFilter
 from scrapy_playwright.page import PageMethod
+from loguru import logger
+
+
 
 
 # default values
@@ -42,7 +45,7 @@ class Scheduler(object):
         self.stats = None
         self.counter = 0
         self.threshold = 60
-        print("Using custom scheduler")
+        logger.debug("Using custom scheduler")
 
     def __len__(self):
         return len(self.queue)
@@ -113,26 +116,26 @@ class Scheduler(object):
 
     def next_request(self):
 
-        print("Getting new request")
+        logger.debug("Getting new request")
 
         block_pop_timeout = self.idle_before_close
         request = self.queue.pop()
-        print("From Spider queue", request, self.main_channel.is_open)
-        print("Counter---->>>", self.counter, self.threshold)
+        logger.info(f"From Spider queue {request} live:{self.main_channel.is_open}")
+        logger.info(f"Counter---->>> Counter:{self.counter} Threshold:{self.threshold}")
         if request == None:
             if self.counter >= self.threshold:
                 # after threshold is passed check for priority queue
                 # check if priority channel is connected if not throw error
                 request = self.priority_queue.pop()
-                print("From Priority queue", request, self.priority_channel.is_open)
+                logger.info(f"From Priority queue: {request} live:{self.priority_channel.is_open}")
 
                 # if priority queue is also empty then check main queue
                 if request == None:
                     request = self.main_queue.pop()
-                    print("From Main queue", request, self.main_channel.is_open)
+                    logger.info(f"From Main queue:{request} live:{self.main_channel.is_open}")
                 if request != None:
                     self.counter = 0
-        print("request --->>>>", request)
+        logger.info(f"request --->>>> {request}")
         # self.stats.inc_value(
         #     'scheduler/dequeued/rabbitmq', spider=self.spider)
         self.counter += 1

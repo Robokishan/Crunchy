@@ -2,6 +2,7 @@ from confluent_kafka import Producer
 import json
 from CrunchyCrawler.rabbitmq.connection import get_channels
 from scrapy.exceptions import DropItem
+from loguru import logger
 
 
 class KafkaPipeline:
@@ -30,7 +31,7 @@ class KafkaPipeline:
 
     def process_item(self, item, spider):
         # Serialize the item as JSON
-        print("Sent to Bucket: ",item)
+        logger.info(f"Sent to Bucket: {item}")
         json_data = json.dumps(dict(item))
 
         # Send the JSON data to the Kafka topic
@@ -61,20 +62,20 @@ class RabbitMQPipeline:
 
 # TODO: refactor this and make it clear
     def process_item(self, item, spider):
-        print("item -----> ", item)
+        logger.debug(f"item -----> {item}")
         try:
             response = item['_response']
             delivery_tag = item.get('delivery_tag')
             queue = item.get('queue')
             channel = self.channels.get(queue)
-            print("RabbitMQ Pipeline", response, item)
+            logger.debug(f"RabbitMQ Pipeline: {response} {item}")
             if delivery_tag:
-                print({"response": response})
+                logger.debug(f"response: {response}")
                 if response == 200:
-                    print("RabbitMQ Sent ack", delivery_tag)
+                    logger.info(f"RabbitMQ Sent ack: {delivery_tag}")
                     channel.basic_ack(delivery_tag=delivery_tag)
                 else:
-                    print("RabbitMQ Sent nack", delivery_tag)
+                    logger.info(f"RabbitMQ Sent nack: {delivery_tag}")
                     channel.basic_nack(
                         delivery_tag=delivery_tag, requeue=True)
                     raise DropItem(
@@ -83,7 +84,7 @@ class RabbitMQPipeline:
                 del item['delivery_tag']
                 del item['queue']
         except Exception as e:
-            print("Error from RabbitMQ Pipeline", e)
+            logger.error(f"Error from RabbitMQ Pipeline: {e}")
             raise DropItem(
                 f"Crawling failed with exception: {str(e)}, item dropped")
         return item
