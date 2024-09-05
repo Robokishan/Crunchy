@@ -70,6 +70,7 @@ class SpiderQueue(Base):
     def pop(self):
         method_frame, header, body = self.server.basic_get(queue=self.key)
         if body != None:
+            logger.info(f"SpiderQ Sent ack: {method_frame.delivery_tag}")
             self.server.basic_ack(delivery_tag=method_frame.delivery_tag)
             return self._decode_request(body)
 
