@@ -24,7 +24,7 @@ class CrunchySpider(RabbitMQMixin):
         if similarCompanies:
             similarCompanies = response.urljoin(similarCompanies)
             logger.info(f"Getting similarCompanies-------> {similarCompanies}")
-            yield generateRequest(similarCompanies, delivery_tag, callback=self.parseSimilarCompanies, previousResult=item)
+            yield generateRequest(similarCompanies, delivery_tag, callback=self.parseSimilarCompanies, previousResult=item, queue="normal")
         else:
             yield item
 

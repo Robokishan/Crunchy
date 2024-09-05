@@ -72,12 +72,14 @@ class RabbitMQPipeline:
             if delivery_tag:
                 logger.debug(f"response: {response}")
                 if response == 200:
-                    logger.info(f"RabbitMQ Sent ack: {delivery_tag}")
-                    channel.basic_ack(delivery_tag=delivery_tag)
+                    if channel is not None:
+                        logger.info(f"RabbitMQ Sent ack: {delivery_tag}")
+                        channel.basic_ack(delivery_tag=delivery_tag)
                 else:
-                    logger.info(f"RabbitMQ Sent nack: {delivery_tag}")
-                    channel.basic_nack(
-                        delivery_tag=delivery_tag, requeue=True)
+                    if channel is not None:
+                        logger.info(f"RabbitMQ Sent nack: {delivery_tag}")
+                        channel.basic_nack(
+                            delivery_tag=delivery_tag, requeue=True)
                     raise DropItem(
                         f"Item dropped due to unsuccessful response. URL: {item.get('crunchbase_url')}, Status Code: {response}")
                 del item['_response']

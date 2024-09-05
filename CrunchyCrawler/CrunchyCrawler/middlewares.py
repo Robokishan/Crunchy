@@ -57,7 +57,8 @@ class RabbitMQMiddleware(object):
     def nack(self, delivery_tag, queue):
         logger.warning("RQ:DownloadMiddleware:Sending nack for", delivery_tag)
         channel = self.channels.get(queue)
-        channel.basic_nack(delivery_tag=delivery_tag, requeue=True)
+        if channel is not None:
+            channel.basic_nack(delivery_tag=delivery_tag, requeue=True)
 
 class RabbitMQSpiderMiddleware:
     def __init__(self, channel, priority_channel):
@@ -74,9 +75,11 @@ class RabbitMQSpiderMiddleware:
         return cls(channel, priority_channel)
     
     def nack(self, delivery_tag, queue):
-        logger.warning(f"RQSpider Middleware:Sending nack for: {delivery_tag}")
         channel = self.channels.get(queue)
-        channel.basic_nack(delivery_tag=delivery_tag, requeue=True)
+        logger.warning(f"RQSpider Middleware checking Channel: {channel} for delivery:{delivery_tag}")
+        if channel is not None:
+            logger.warning(f"RQSpider Middleware:Sending nack for: {delivery_tag}")
+            channel.basic_nack(delivery_tag=delivery_tag, requeue=True)
 
     def process_spider_exception(self, response, exception, spider):
         delivery_tag = response.meta.get('delivery_tag', None)

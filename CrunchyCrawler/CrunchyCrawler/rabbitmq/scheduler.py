@@ -1,5 +1,5 @@
 # VERY POOR SHITTY SCHEDULER NEEDS IMPROVEMENT
-from .connection import get_channels, close
+from .connection import get_channels, get_internal_channel, close
 from scrapy import Request
 from scrapy.utils.misc import load_object
 from .dupefilter import RFPDupeFilter
@@ -29,7 +29,8 @@ class Scheduler(object):
         'Accept-Language': 'en-US,en;q=0.9',  # this is game changing header
     }
 
-    def __init__(self, main_channel, priority_channel, persist, spider_queue_key, spider_queue_cls, main_queue_key, main_queue_cls, priority_queue_key, priority_queue_cls, dupefilter_key, idle_before_close, *args, **kwargs):
+    def __init__(self, internal_channel, main_channel, priority_channel, persist, spider_queue_key, spider_queue_cls, main_queue_key, main_queue_cls, priority_queue_key, priority_queue_cls, dupefilter_key, idle_before_close, *args, **kwargs):
+        self.internal_channel = internal_channel
         self.main_channel = main_channel
         self.priority_channel = priority_channel
         # TODO: don't know use of persist
@@ -70,7 +71,8 @@ class Scheduler(object):
         idle_before_close = settings.get(
             'SCHEDULER_IDLE_BEFORE_CLOSE', IDLE_BEFORE_CLOSE)
         main_channel, priority_channel = get_channels()
-        return cls(main_channel, priority_channel, persist, spider_queue_key, spider_queue_cls, main_queue_key, main_queue_cls, priority_queue_key, priority_queue_cls, dupefilter_key, idle_before_close)
+        internal_channel = get_internal_channel()
+        return cls(internal_channel, main_channel, priority_channel, persist, spider_queue_key, spider_queue_cls, main_queue_key, main_queue_cls, priority_queue_key, priority_queue_cls, dupefilter_key, idle_before_close)
 
     @classmethod
     def from_crawler(cls, crawler):
@@ -81,8 +83,7 @@ class Scheduler(object):
     def open(self, spider):
         self.spider = spider
 
-        # TODO: seprate channels for all queues
-        self.queue = self.queue_cls(self.main_channel, spider, self.spider_queue_key)
+        self.queue = self.queue_cls(self.internal_channel, spider, self.spider_queue_key)
         self.main_queue = self.main_queue_cls(
             self.main_channel, spider, self.main_queue_key)
         self.priority_queue = self.priority_queue_cls(
