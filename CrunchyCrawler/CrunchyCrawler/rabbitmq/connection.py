@@ -17,7 +17,8 @@ priority_queue = settings.get('RABBIT_MQ_PRIORITY_QUEUE')
 # Connect to RabbitMQ
 parameters = pika.URLParameters(connection_dsn)
 connection = pika.BlockingConnection(parameters)
-channel = connection.channel(1)
+internal_channel = connection.channel(1)
+channel = connection.channel(2)
 priority_channel = connection.channel(5)
 
 # MAIN QUEUE binding with exchange and routing key
@@ -36,6 +37,10 @@ priority_channel.queue_bind(queue=priority_queue, exchange=priority_exchange,
 def get_channels():
     print("Getting RabbitMQ Channel Instance")
     return channel, priority_channel
+
+def get_internal_channel():
+    print("Getting RabbitMQ Internal Channel Instance")
+    return internal_channel
 
 
 def close(channel):
