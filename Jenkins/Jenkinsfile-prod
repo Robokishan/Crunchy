@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     parameters {
-        choice(name: 'SERVICE_NAME', choices: ['crawler', 'api'], description: 'Select service to build')
+        choice(name: 'SERVICE_NAME', choices: ['crawler', 'api', 'ui'], description: 'Select service to build')
     }
 
     environment {     
@@ -21,6 +21,10 @@ pipeline {
                   } else if (serviceName == 'api') {
                     dir('CrunchyRest') {
                       sh "docker build -t robokishan/crunchy:rest -f Dockerfile ."
+                    }
+                  } else if (serviceName == 'ui') {
+                    dir('Ui') {
+                      sh "docker build -t robokishan/crunchy:ui -f Dockerfile ."
                     }
                   } else {
                       echo "Invalid service selected"
@@ -41,6 +45,8 @@ pipeline {
                   sh "docker image push robokishan/crunchy:crawler"
                 } else if(serviceName == 'api') {
                   sh "docker image push robokishan/crunchy:rest" 
+                } else if(serviceName == 'ui') {
+                  sh "docker image push robokishan/crunchy:ui" 
                 } else {
                     echo "Invalid service selected"
                     currentBuild.result = 'FAILURE'
