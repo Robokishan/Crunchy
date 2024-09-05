@@ -16,6 +16,7 @@ class CrunchySpider(RabbitMQMixin):
         delivery_tag = response.meta.get('delivery_tag')
         item['delivery_tag'] = response.meta.get('delivery_tag')
         item['queue'] = response.meta.get('queue')
+        queue = response.meta.get('queue')
         item['_response'] = response.status
         
         logger.info(f"Scrapped item ----> {item}")
@@ -24,7 +25,7 @@ class CrunchySpider(RabbitMQMixin):
         if similarCompanies:
             similarCompanies = response.urljoin(similarCompanies)
             logger.info(f"Getting similarCompanies-------> {similarCompanies}")
-            yield generateRequest(similarCompanies, delivery_tag, callback=self.parseSimilarCompanies, previousResult=item, queue="normal")
+            yield generateRequest(similarCompanies, delivery_tag, callback=self.parseSimilarCompanies, previousResult=item, queue=queue)
         else:
             yield item
 
