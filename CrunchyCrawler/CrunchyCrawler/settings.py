@@ -10,6 +10,12 @@
 import os
 from decouple import config as DefaultConfig
 from decouple import Config, RepositoryEnv
+from loguru import logger
+import logging
+
+
+# Configure Loguru
+
 
 DEV_ENV_FILE = "../.env.dev"
 PROD_ENV_FILE = "../.env.prod"
@@ -71,7 +77,7 @@ RABBIT_MQ_PRIORITY_EXCHANGE = config('RABBIT_MQ_PRIORITY_EXCHANGE', cast=str)
 RABBIT_MQ_PRIORITY_ROUTING_KEY = config('RABBIT_MQ_PRIORITY_ROUTING_KEY', cast=str)
 RABBIT_MQ_PRIORITY_QUEUE = config('RABBIT_MQ_PRIORITY_QUEUE', cast=str)
 
-LOG_ENABLED = True
+LOG_ENABLED = False
 
 PLAYWRIGHT_BROWSER_TYPE = "firefox"
 
@@ -162,3 +168,23 @@ AUTOTHROTTLE_ENABLED = True
 REQUEST_FINGERPRINTER_IMPLEMENTATION = "2.7"
 TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 FEED_EXPORT_ENCODING = "utf-8"
+
+import inspect
+class InterceptHandler(logging.Handler):
+    def emit(self, record: logging.LogRecord) -> None:
+        # Get corresponding Loguru level if it exists.
+        level: str | int
+        try:
+            level = logger.level(record.levelname).name
+        except ValueError:
+            level = record.levelno
+
+        # Find caller from where originated the logged message.
+        frame, depth = inspect.currentframe(), 0
+        while frame and (depth == 0 or frame.f_code.co_filename == logging.__file__):
+            frame = frame.f_back
+            depth += 1
+
+        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
+# Configure Loguru to handle all logs
+logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)

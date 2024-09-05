@@ -1,7 +1,7 @@
 from scrapy import Spider
 from scrapy import signals
 from scrapy.exceptions import DontCloseSpider
-
+from loguru import logger
 from CrunchyCrawler.rabbitmq.connection import get_channels
 
 
@@ -12,6 +12,6 @@ class RabbitMQMixin(Spider):
                                      signal=signals.spider_idle)
 
     def spider_idle(self):
-        print("Sitting idle")
+        logger.info("Sitting idle")
         raise DontCloseSpider
 

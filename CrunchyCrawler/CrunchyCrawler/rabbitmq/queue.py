@@ -2,7 +2,7 @@ from scrapy.utils.reqser import request_to_dict, request_from_dict
 import pickle
 from scrapy import Request
 from scrapy_playwright.page import PageMethod
-
+from loguru import logger
 from CrunchyCrawler.request import generateRequest
 
 
@@ -18,7 +18,7 @@ class Base(object):
         self.server = server
         self.spider = spider
         self.key = key % {'spider': spider.name}
-        print("starting here -->", key % {'spider': spider.name})
+        logger.debug(f"starting here --> {key % {'spider': spider.name}}" )
         self._declare_queue()
 
     def _declare_queue(self):
@@ -52,7 +52,7 @@ class Base(object):
 class SpiderQueue(Base):
 
     def _declare_queue(self):
-        print("Declaring queue", self.key)
+        logger.debug(f"Declaring queue: {self.key}")
         self.server.queue_declare(self.key)
 
     def __len__(self):
@@ -88,7 +88,7 @@ class MainQueue():
 
         # key is just queue name
         self.key = key
-        print("Main queue", self.key)
+        logger.debug(f"Main queue: {self.key}")
 
     def __len__(self):
         response = self.server.queue_declare(
@@ -100,7 +100,7 @@ class MainQueue():
 
     def pop(self):
         method_frame, header, body = self.server.basic_get(queue=self.key)
-        print("Response from main queue", body, method_frame, header, self.key)
+        logger.debug(f"Response from main queue ", body, method_frame, header, self.key)
         if body != None:
             return self._decode_request(body.decode('utf-8'), method_frame.delivery_tag)
 
@@ -131,7 +131,7 @@ class PriorityQueue():
 
         # key is just queue name
         self.key = key
-        print("Priority queue", self.key)
+        logger.info(f"Priority queue: {self.key}")
 
     def __len__(self):
         response = self.server.queue_declare(
@@ -143,7 +143,7 @@ class PriorityQueue():
 
     def pop(self):
         method_frame, header, body = self.server.basic_get(queue=self.key)
-        print("Response from priority queue", body, method_frame, header, self.key)
+        logger.info(f"Response from priority queue: {body} ,{method_frame}, {header}, {self.key}")
         if body != None:
             return self._decode_request(body.decode('utf-8'), method_frame.delivery_tag)
 

@@ -3,7 +3,7 @@ from CrunchyCrawler.request import generateRequest
 from CrunchyCrawler.rabbitmq.spiders import RabbitMQMixin
 from CrunchyCrawler.parser.CrunchbaseDataParser import CrunchbaseDataParser
 from scrapy.linkextractors import LinkExtractor
-
+from loguru import logger
 
 class CrunchySpider(RabbitMQMixin):
     name = "crunchy"
@@ -18,12 +18,12 @@ class CrunchySpider(RabbitMQMixin):
         item['queue'] = response.meta.get('queue')
         item['_response'] = response.status
         
-        print("Scrapped item ---->", item)
+        logger.info(f"Scrapped item ----> {item}")
         
         similarCompanies = CrunchbaseDataParser.extractSimilarCompanies(x)
         if similarCompanies:
             similarCompanies = response.urljoin(similarCompanies)
-            print("Getting similarCompanies------->", similarCompanies)
+            logger.info(f"Getting similarCompanies-------> {similarCompanies}")
             yield generateRequest(similarCompanies, delivery_tag, callback=self.parseSimilarCompanies, previousResult=item)
         else:
             yield item
@@ -36,7 +36,7 @@ class CrunchySpider(RabbitMQMixin):
         item = {}
         item['similar_companies'] = []
         previous_results = response.meta.get('previousResult', {})
-        print("Similar company links --> ", links)
+        logger.info(f"Similar company links --> {links}")
         for link in links:
             item['similar_companies'].append(link.url)
         current_results = dict(item)
