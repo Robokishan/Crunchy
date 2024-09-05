@@ -35,9 +35,15 @@ BOT_NAME = "CrunchyCrawler"
 SPIDER_MODULES = ["CrunchyCrawler.spiders"]
 NEWSPIDER_MODULE = "CrunchyCrawler.spiders"
 
+'''
+Not sure why but i have put 1000 to put custom middleware at bottom
+of all scrapy default middleware
+because of same process_exception running multiple times
+'''
 # playwright
 SPIDER_MIDDLEWARES = { 
-    'CrunchyCrawler.middlewares.RabbitMQSpiderMiddleware' : 100 
+    'CrunchyCrawler.middlewares.RabbitMQSpiderMiddleware' : 1000 ,
+    'CrunchyCrawler.middlewares.TestSpiderMiddleware1' : 1002,
 }
 
 

@@ -1,4 +1,4 @@
-
+# VERY POOR SHITTY SCHEDULER NEEDS IMPROVEMENT
 from .connection import get_channels, close
 from scrapy import Request
 from scrapy.utils.misc import load_object
@@ -118,6 +118,7 @@ class Scheduler(object):
 
         logger.debug("Getting new request")
 
+        # shitty logic for waiting. even though its waiting it is constantly polling on if
         block_pop_timeout = self.idle_before_close
         request = self.queue.pop()
         logger.info(f"From Spider queue {request} live:{self.main_channel.is_open}")

@@ -1,4 +1,4 @@
-from scrapy.utils.reqser import request_to_dict, request_from_dict
+from scrapy.utils.request import request_from_dict
 import pickle
 from scrapy import Request
 from scrapy_playwright.page import PageMethod
@@ -24,13 +24,13 @@ class Base(object):
     def _declare_queue(self):
         pass
 
-    def _encode_request(self, request):
+    def _encode_request(self, request: Request):
         """Encode a request object"""
-        return pickle.dumps(request_to_dict(request, self.spider))
+        return pickle.dumps(request.to_dict(spider=self.spider))
 
     def _decode_request(self, encoded_request):
         """Decode an request previously encoded"""
-        return request_from_dict(pickle.loads(encoded_request), self.spider)
+        return request_from_dict(pickle.loads(encoded_request), spider=self.spider)
 
     def __len__(self):
         """Return the length of the queue"""
@@ -107,7 +107,7 @@ class MainQueue():
     # i don't think this will require
     def _encode_request(self, request):
         """Encode a request object"""
-        return pickle.dumps(request_to_dict(request, self.spider))
+        return pickle.dumps(request.to_dict(spider=self.spider))
 
     def _decode_request(self, encoded_request, delivery_tag):
         """Decode an request previously encoded"""
@@ -150,7 +150,7 @@ class PriorityQueue():
     # i don't think this will require
     def _encode_request(self, request):
         """Encode a request object"""
-        return pickle.dumps(request_to_dict(request, self.spider))
+        return pickle.dumps(request.to_dict(spider=self.spider))
 
     def _decode_request(self, encoded_request, delivery_tag):
         """Decode an request previously encoded"""

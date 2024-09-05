@@ -33,7 +33,8 @@ class CrunchbaseDataParser:
             item['name'] = name.strip(" \t\n\r")
         
         logo = x.xpath("//profile-header-logo[1]/picture[1]/source[1]/@srcset").get()
-        logo = get_url_for_resolution(logo, '1x')
+        if logo is not None:
+            logo = get_url_for_resolution(logo, '1x')
         if CrunchbaseDataParser.not_empty(logo):
             item['logo'] = logo.strip(" \t\n\r")
 

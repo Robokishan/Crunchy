@@ -1,4 +1,3 @@
-from scrapy.utils.reqser import request_to_dict, request_from_dict
 import pickle
 from scrapy import Request
 from scrapy_playwright.page import PageMethod

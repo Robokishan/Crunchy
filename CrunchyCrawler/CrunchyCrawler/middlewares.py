@@ -21,6 +21,10 @@ class CrunchyUserAgentMiddleware(object):
         agent = random.choice(AGENTS)
         request.headers['User-Agent'] = agent
         logger.info(f"Selected agent: {agent}")
+        
+    def process_exception(self, request, exception, spider):
+        logger.error(f"Error in CrunchyUserAgentMiddleware {exception}")
+        return None
 
 class RabbitMQMiddleware(object):
     def __init__(self, channel, priority_channel):
@@ -46,7 +50,8 @@ class RabbitMQMiddleware(object):
         delivery_tag = request.meta.get('delivery_tag')
         queue = request.meta.get('queue')
         logger.error(f"process_exception: {delivery_tag}", request.meta, exception)
-        self.nack(delivery_tag, queue)
+        if delivery_tag:
+            self.nack(delivery_tag, queue)
         return None
 
     def nack(self, delivery_tag, queue):
@@ -69,13 +74,29 @@ class RabbitMQSpiderMiddleware:
         return cls(channel, priority_channel)
     
     def nack(self, delivery_tag, queue):
-        logger.warning("RQSpider Middleware:Sending nack for", delivery_tag)
+        logger.warning(f"RQSpider Middleware:Sending nack for: {delivery_tag}")
         channel = self.channels.get(queue)
         channel.basic_nack(delivery_tag=delivery_tag, requeue=True)
 
     def process_spider_exception(self, response, exception, spider):
         delivery_tag = response.meta.get('delivery_tag', None)
         queue = response.meta.get('queue')
-        logger.error(f"process_spider_exception {delivery_tag}", response.meta, exception, spider)
+        logger.error(f"process_spider_exception: {exception} delivery:{delivery_tag} queue:{queue} {response.meta} ")
+        logger.exception(exception)
         if delivery_tag:
             self.nack(delivery_tag, queue)
+        return None
+
+
+
+# dummy test middleware
+class TestSpiderMiddleware1:
+    @classmethod
+    def from_crawler(cls, crawler):
+        # This method is used by Scrapy to create your spiders.
+        s = cls()
+        return s
+    
+    def process_spider_exception(self, response, exception, spider):
+        logger.error(f"process_spider_exception1 {response.meta} {exception} {spider}")
+        return None
