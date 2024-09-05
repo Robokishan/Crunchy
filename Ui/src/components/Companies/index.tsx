@@ -219,12 +219,14 @@ export const CompanyDetails = ({
           renderDetailPanel={({ row }) => (
             <div className="grid w-[80vw] grid-cols-2 content-center gap-4 rounded-md border-2 border-solid border-slate-300 bg-white p-2">
               <div className="flex h-32 w-32 items-center">
-                <Image
-                  src={row.original.logo}
-                  alt="company-icon"
-                  width={100}
-                  height={100}
-                />
+                {row.original?.logo && (
+                  <Image
+                    src={row.original.logo}
+                    alt="company-icon"
+                    width={100}
+                    height={100}
+                  />
+                )}
               </div>
               {Object.entries(row.original).map(([key, value]) => {
                 return (

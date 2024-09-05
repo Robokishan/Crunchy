@@ -23,7 +23,7 @@ class CrunchbaseDataParser:
         if CrunchbaseDataParser.not_empty(website):
             item['website'] = website
 
-        logo = x.xpath("//identifier-image[1]/div[1]/img[1]/@src").get()
+        logo = x.xpath("//profile-header-logo[1]/picture[1]/img[1]").get()
         if CrunchbaseDataParser.not_empty(logo):
             item['logo'] = logo.strip(" \t\n\r")
 
