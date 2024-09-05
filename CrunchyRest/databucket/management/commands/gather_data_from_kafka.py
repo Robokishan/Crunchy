@@ -2,7 +2,7 @@ from django.core.management import BaseCommand
 from rabbitmq.apps import RabbitMQManager
 from databucket.models import Crunchbase
 from kafka.consumer import Subscriber
-import regex as re
+import re
 from utils.Currency import CurrencyConverter
 import pycountry
 
