@@ -5,3 +5,4 @@ confluent-kafka==2.1.1
 python-decouple==3.8
 Twisted==22.10.0
 playwright==1.46.0
+loguru==0.7.2
