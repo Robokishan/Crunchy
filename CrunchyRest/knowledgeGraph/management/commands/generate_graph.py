@@ -30,15 +30,24 @@ class Command(BaseCommand):
                     # print("_company", type(_company), index, _company)
                     with session.begin_transaction() as tx:
                         create_company_query = """
-                        MERGE (company:Company {name: $name})
+                        MERGE (company:Company {name: $name, crunchbase_url: $crunchbase_url})
                         SET company.mongoId = $mongoId,
                             company.funding = $funding,
+                            company.funding_txt = $funding_txt,
                             company.website = $website,
-                            company.crunchbase_url = $crunchbase_url,
-                            company.description = $description
+                            company.description = $description,
+                            company.long_description = $long_description,
+                            company.acquired = $acquired,
+                            company.founded = $founded,
+                            company.lastfunding = $lastfunding
                         """
                         company = tx.run(create_company_query, mongoId=_company.get('_id'),
                             name=_company.get('name'), funding=_company.get('funding_usd', 0) or 0,
+                            funding_txt=_company.get('funding'),
+                            long_description=_company.get('long_description'),
+                            acquired=_company.get('acquired'),
+                            founded=_company.get('founded'),
+                            lastfunding=_company.get('lastfunding'),
                             website=_company.get('website'), crunchbase_url=_company.get('crunchbase_url'),
                             logo=_company.get('logo'), description=_company.get('description'))
                         # print("Company node created:", company)  # Print the company variable
