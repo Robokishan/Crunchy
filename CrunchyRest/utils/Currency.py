@@ -1,5 +1,4 @@
-import re
-import pycountry
+import regex as re
 from babel import Locale
 import requests
 import json

@@ -1,5 +1,5 @@
 import csv
-import re
+import regex as re
 import pycountry
 from babel import Locale
 import requests

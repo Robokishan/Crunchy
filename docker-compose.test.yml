@@ -111,13 +111,17 @@ services:
 
   neo4j:
     container_name: graphdb
-    image: "neo4j:5.10.0-community-bullseye"
+    image: "neo4j:5.23.0-community-bullseye"
     restart: always
     ports:
       - "7474:7474"
       - "7687:7687"
     environment:
       - NEO4J_AUTH=neo4j/Abcd@1234
+      - NEO4J_apoc_export_file_enabled=true
+      - NEO4J_apoc_import_file_enabled=true
+      - NEO4J_apoc_import_file_use__neo4j__config=true
+      - NEO4J_PLUGINS=["apoc"]
     volumes:
       - neo4j_data:/data
       - neo4j_logs:/logs

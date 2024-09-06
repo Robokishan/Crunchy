@@ -2,7 +2,7 @@ from scrapy.selector import Selector
 from CrunchyCrawler.extractors.extractors import DetailsExtract
 from CrunchyCrawler.extractors.extractors import AboutExtract
 from CrunchyCrawler.extractors.extractors import HighlightsExtract
-import re
+import regex as re
 
 # list of all exctractors add if any new extractor come for crunchbase
 extractors = [AboutExtract, DetailsExtract, HighlightsExtract]

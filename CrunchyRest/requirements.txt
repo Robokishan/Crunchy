@@ -10,3 +10,4 @@ tqdm==4.65.0
 pycountry==24.6.1
 babel==2.16.0
 requests==2.31.0
+regex
