@@ -1,70 +1,58 @@
 from rest_framework.decorators import api_view
+from rest_framework import generics
 from rest_framework.response import Response
 from databucket.serializer import CrunchbaseSerializer
 from databucket.models import Crunchbase
-from bson import ObjectId
 from django.db.models import Q
 from knowledgeGraph import db
+from rest_framework import pagination
+import json
+class ColossussLargePagination(pagination.PageNumberPagination):
+    page_size = 100
+    max_page_size = 300
 
+class CompaniesListView(generics.ListAPIView):
+    serializer_class = CrunchbaseSerializer
+    pagination_class = ColossussLargePagination
 
+    def get_queryset(self):
+        queryset = Crunchbase.objects.order_by("-updated_at")
+        
+        filter_conditions = Q()
+        filters = self.request.GET.get('filters', None)
+        sorting = self.request.GET.get('sorting', None)
+        globalFilter = self.request.GET.get('search', None)
 
-@api_view(['GET'])
-def getCompanies(request):
-
-    company_id = request.GET.get("id")
-
-    if company_id:
-        try:
-            company_id = ObjectId(company_id)
-            queryset = Crunchbase.objects.get(_id=company_id)
-            serialized_data = CrunchbaseSerializer(
-                queryset).data
-            return Response(serialized_data)
-        except Exception as e:
-            print(e)
-            return Response("Doesn't exist", status=404)
-    else:
-        page = request.GET.get("page", 1)
-        page_size = request.GET.get("limit", 60)
-
-        searchText = request.GET.get('search', None)
-
-        if page < 1:
-            page = 1
-
-        if page_size > 500:
-            page_size = 500
-
-        queryset = Crunchbase.objects.all().order_by("-updated_at")
-        if searchText:
-            filters = {
-                '$text': {
-                    '$search': searchText,
-                    '$language': 'en',  # Specify the language if needed
-                    '$caseSensitive': False,  # Set to True for case-sensitive search
-                    '$diacriticSensitive': False  # Set to True for diacritic-sensitive search
-                }
-            }
+        if globalFilter != 'null' and globalFilter != None:
+            print("globalFilter", globalFilter)
             queryset = queryset.filter(
-                Q(industries__icontains=searchText) |
-                Q(description__icontains=searchText) |
-                Q(long_description__icontains=searchText) |
-                Q(founders__icontains=searchText)
+                Q(name__icontains=globalFilter) |
+                Q(description__icontains=globalFilter) |
+                Q(founders__icontains=globalFilter)
             )
+        elif filters:
+            filters = json.loads(filters)
+            # filters: [{"id":"name","value":"level ai"}]
+            for filter in filters:
+                if filter["id"] == "name":
+                    filter_conditions &= Q(name__icontains=filter["value"])
+                elif filter["id"] == "description":
+                    filter_conditions &= Q(description__icontains=filter["value"])
+            if len(filters) > 0:
+                queryset = queryset.filter(filter_conditions)
 
-        start_index = (page - 1) * page_size
-        end_index = page * page_size
+        if sorting:
+            sorting = json.loads(sorting)
+            sort_fields = []
+            for sort in sorting:
+                field = sort["id"]
+                if sort.get("desc", False):  # Check if 'desc' key exists and is True
+                    field = f"-{field}"
+                sort_fields.append(field)
+            if len(sorting) > 0:
+                queryset = queryset.order_by(*sort_fields)
 
-        # print(queryset)
-
-        # serialized_data = CrunchbaseSerializer(
-        #     queryset[start_index:end_index], many=True).data
-
-        # all the company list without any limit
-        serialized_data = CrunchbaseSerializer(
-            queryset, many=True).data
-        return Response(serialized_data)
-
+        return queryset
 
 
 @api_view(['GET'])
