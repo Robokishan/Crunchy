@@ -24,7 +24,6 @@ class CompaniesListView(generics.ListAPIView):
         globalFilter = self.request.GET.get('search', None)
 
         if globalFilter != 'null' and globalFilter != None:
-            print("globalFilter", globalFilter)
             queryset = queryset.filter(
                 Q(name__icontains=globalFilter) |
                 Q(description__icontains=globalFilter) |
