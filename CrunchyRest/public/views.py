@@ -7,13 +7,13 @@ from django.db.models import Q
 from knowledgeGraph import db
 from rest_framework import pagination
 import json
-class ColossussLargePagination(pagination.PageNumberPagination):
+class CompanyPagination(pagination.PageNumberPagination):
     page_size = 100
     max_page_size = 300
 
 class CompaniesListView(generics.ListAPIView):
     serializer_class = CrunchbaseSerializer
-    pagination_class = ColossussLargePagination
+    pagination_class = CompanyPagination
 
     def get_queryset(self):
         queryset = Crunchbase.objects.order_by("-updated_at")
