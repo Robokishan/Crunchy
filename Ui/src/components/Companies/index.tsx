@@ -393,14 +393,16 @@ export const CompanyDetails = () => {
                     value.length > 0 ? (
                       value.map((item, idx, arr) =>
                         typeof item === "string" && isUrl(item) ? (
-                          <a
-                            key={idx}
-                            href={item}
-                            target="_blank"
-                            className="text-blue-500 underline"
-                          >
-                            {item}
-                          </a>
+                          <div>
+                            <Link
+                              key={idx}
+                              href={item}
+                              target="_blank"
+                              className="text-blue-500 underline"
+                            >
+                              {item}
+                            </Link>
+                          </div>
                         ) : (
                           <>
                             <span key={idx}>{item}</span>
