@@ -30,8 +30,6 @@ type UserApiResponse = {
   count: number;
 };
 
-const fetchSize = 25;
-
 export const CompanyDetails = () => {
   const tableContainerRef = useRef<HTMLDivElement>(null); //we can get access to the underlying TableContainer element and react to its scroll events
   const rowVirtualizerInstanceRef =
@@ -364,70 +362,6 @@ export const CompanyDetails = () => {
       <div className="max-h-[85vh] overflow-auto">
         <MaterialReactTable
           table={table}
-         
-          // columns={columns}
-          // data={companyDetails}
-          // defaultDisplayColumn={{ enableResizing: true }}
-          // enableBottomToolbar={false}
-          enableColumnResizing={true}
-          // enableColumnVirtualization
-          enableGlobalFilterModes={true}
-          // enablePagination={false}
-          // enablePinning
-          displayColumnDefOptions={{
-            "mrt-row-expand": {
-              muiTableHeadCellProps: {
-                align: "right" as const
-              },
-              muiTableBodyCellProps: {
-                align: "right" as const,
-              },
-            },
-          }}
-          enableRowVirtualization={true}
-          // muiTableContainerProps={{ sx: { maxHeight: '900px' } }}
-          renderDetailPanel={({ row }) => (
-            <div className="grid w-[80vw] grid-cols-2 content-center gap-4 rounded-md border-2 border-solid border-slate-300 bg-white p-2">
-              <div className="flex h-32 w-32 items-center">
-                {row.original?.logo && (
-                  <Image
-                    src={row.original.logo}
-                    alt="company-icon"
-                    width={100}
-                    height={100}
-                  />
-                )}
-              </div>
-              {Object.entries(row.original).map(([key, value]) => {
-                return (
-                  <div
-                    key={`${row.original.name}-${row.original._id}-expand`}
-                    className="flex flex-col"
-                  >
-                    <span className="text-base capitalize text-gray-500">
-                      {key}:
-                    </span>
-                    <span className="text-gray-500">
-                      <>
-                      {!value
-                        ? "-"
-                        : typeof value === "string"
-                        ? value
-                        : Array.isArray(value)
-                        ? value.join(", ")
-                        : value}
-                        </>
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          //   onSortingChange={setSorting}
-          //   state={{ isLoading, sorting }}
-          rowVirtualizerInstanceRef={rowVirtualizerInstanceRef} //optional
-          rowVirtualizerProps={{ overscan: 5 }} //optionally customize the row virtualizer
-          columnVirtualizerProps={{ overscan: 2 }} //optionally customize the column virtualizer
         />
       </div>
       {modalIsOpen === true && (
