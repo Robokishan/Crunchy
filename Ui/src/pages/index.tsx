@@ -3,9 +3,5 @@
 import { CompanyDetails } from "~/components/Companies";
 
 export default function Home() {
-  return (
-    <>
-      <CompanyDetails />
-    </>
-  );
+  return <CompanyDetails />;
 }

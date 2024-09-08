@@ -1,8 +1,6 @@
 import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/solid";
-import { Typography } from '@mui/material';
-import {
-  useInfiniteQuery
-} from "@tanstack/react-query";
+import { Typography } from "@mui/material";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import {
   MaterialReactTable,
   type MRT_ColumnDef,
@@ -23,11 +21,22 @@ import {
 } from "react";
 import { type CompayDetail } from "~/utils/types";
 import ExportToNotion from "../ExportNotionModal";
-import { isServer } from "../../utils/serverSide/isServer";
+import { getBaseURL } from "../../utils/baseUrl";
+import crunchyClient from "~/utils/crunchyClient";
+import { formatDistance, format, differenceInMinutes } from "date-fns";
 
 type UserApiResponse = {
   results: Array<CompayDetail>;
   count: number;
+};
+
+const isUrl = (value: string) => {
+  try {
+    new URL(value);
+    return true;
+  } catch (_) {
+    return false;
+  }
 };
 
 export const CompanyDetails = () => {
@@ -40,32 +49,26 @@ export const CompanyDetails = () => {
     []
   );
   const [globalFilter, setGlobalFilter] = useState<string>();
-  const [sorting, setSorting] = useState<MRT_SortingState>([{
-    id: "created_at",
-    desc: true,
-  }]);
+  const [sorting, setSorting] = useState<MRT_SortingState>([
+    {
+      id: "created_at",
+      desc: true,
+    },
+  ]);
 
   const { data, fetchNextPage, isError, isFetching, isLoading } =
     useInfiniteQuery<UserApiResponse>({
-      queryKey: [
-        "table-data",
-        columnFilters, //refetch when columnFilters changes
-        globalFilter, //refetch when globalFilter changes
-        sorting, //refetch when sorting changes
-      ],
+      queryKey: ["table-data", columnFilters, globalFilter, sorting],
       queryFn: async ({ pageParam }) => {
-        const url = new URL(
-          "/public/comp",
-          isServer() ? process.env.CRUNCHY_REST : `http://${window.location.hostname}:8001`
-        );
+        const url = new URL("/public/comp", getBaseURL());
         url.searchParams.set("page", `${(pageParam as number) ?? 1}`);
         url.searchParams.set("filters", JSON.stringify(columnFilters ?? []));
         url.searchParams.set("search", (globalFilter as string) ?? null);
         url.searchParams.set("sorting", JSON.stringify(sorting ?? []));
-
-        const response = await fetch(url.href);
-        const json = (await response.json()) as UserApiResponse;
-        return json;
+        const { data } = await crunchyClient.get<UserApiResponse>(
+          url.toString()
+        );
+        return data;
       },
       initialPageParam: 1,
       getNextPageParam: (_lastGroup, groups) => groups.length,
@@ -136,24 +139,27 @@ export const CompanyDetails = () => {
       {
         accessorKey: "logo",
         header: "Logo",
-        enableSorting:false,
-        Cell: ({ cell }) => (
-          <>
-            <div className="flex h-auto w-auto items-center gap-5">
-              {cell.row?.original?.logo && (
-                <Image
-                  src={cell.row.original.logo}
-                  alt="company-icon"
-                  width={30}
-                  height={30}
-                />
-              )}
-              <button onClick={() => openExportModal(cell.row.original)}>
-                <ArrowTopRightOnSquareIcon className="h-5 w-5 fill-gray-800" />
-              </button>
-            </div>
-          </>
-        ),
+        enableSorting: false,
+        Cell: ({ cell }) => {
+          return (
+            <>
+              <div className="flex h-auto w-auto items-center gap-5">
+                <Link href={cell.row.original?.logo || "/image-broken.png"}>
+                  <Image
+                    src={cell.row.original?.logo || "/image-broken.png"}
+                    alt="company-icon"
+                    loading="lazy"
+                    width={40}
+                    height={40}
+                  />
+                </Link>
+                <button onClick={() => openExportModal(cell.row.original)}>
+                  <ArrowTopRightOnSquareIcon className="h-5 w-5 fill-gray-800" />
+                </button>
+              </div>
+            </>
+          );
+        },
       },
       {
         accessorKey: "name",
@@ -182,12 +188,34 @@ export const CompanyDetails = () => {
       {
         accessorKey: "created_at",
         header: "Created",
-        Cell: ({ cell }) => <>{cell.getValue() ?? "-"}</>,
+        Cell: ({ cell }) => {
+          const value = cell.getValue() as Date;
+          return (
+            <>
+              {value
+                ? differenceInMinutes(new Date(), value) < 60
+                  ? formatDistance(value, new Date(), { addSuffix: true })
+                  : format(value, "yyyy-MM-dd hh:mm a")
+                : "-"}
+            </>
+          );
+        },
       },
       {
         accessorKey: "updated_at",
         header: "Updated",
-        Cell: ({ cell }) => <>{cell.getValue() ?? "-"}</>,
+        Cell: ({ cell }) => {
+          const value = cell.getValue() as Date;
+          return (
+            <>
+              {value
+                ? differenceInMinutes(new Date(), value) < 60
+                  ? formatDistance(value, new Date(), { addSuffix: true })
+                  : format(value, "yyyy-MM-dd hh:mm a")
+                : "-"}
+            </>
+          );
+        },
       },
       {
         accessorKey: "funding_usd",
@@ -304,6 +332,9 @@ export const CompanyDetails = () => {
     enableRowVirtualization: true,
     manualFiltering: true,
     manualSorting: true,
+    muiSkeletonProps: {
+      animation: "wave",
+    },
     muiTableContainerProps: {
       ref: tableContainerRef, //get access to the table container element
       sx: { maxHeight: "600px" }, //give the table a max height
@@ -319,8 +350,79 @@ export const CompanyDetails = () => {
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
     onSortingChange: setSorting,
+    enableExpandAll: false,
+    renderDetailPanel: ({ row }) => {
+      return (
+        <div className="grid w-[100vw] grid-cols-2 content-center gap-4 rounded-md border-2 border-solid border-slate-300 bg-white p-2">
+          <div className="flex h-32 w-32 items-center">
+            <Link href={row.original?.logo || "/image-broken.png"}>
+              <Image
+                src={row.original?.logo || "/image-broken.png"}
+                alt="company-icon"
+                loading="lazy"
+                width={100}
+                height={100}
+              />
+            </Link>
+          </div>
+          {Object.entries(row.original).map(([key, value], index) => {
+            return (
+              <div
+                key={`${row.original._id}-${index}-expand`}
+                className="flex flex-col"
+              >
+                <span className="text-base capitalize text-gray-500">
+                  {key}:
+                </span>
+                <span className="overflow-hidden break-words text-gray-500">
+                  {!value ? (
+                    "-"
+                  ) : typeof value === "string" ? (
+                    isUrl(value) ? (
+                      <a
+                        href={value}
+                        target="_blank"
+                        className="text-blue-500 underline"
+                      >
+                        {value}
+                      </a>
+                    ) : (
+                      value
+                    )
+                  ) : Array.isArray(value) ? (
+                    value.length > 0 ? (
+                      value.map((item, idx, arr) =>
+                        typeof item === "string" && isUrl(item) ? (
+                          <a
+                            key={idx}
+                            href={item}
+                            target="_blank"
+                            className="text-blue-500 underline"
+                          >
+                            {item}
+                          </a>
+                        ) : (
+                          <>
+                            <span key={idx}>{item}</span>
+                            {arr.length - 1 !== idx && <span>, </span>}
+                          </>
+                        )
+                      )
+                    ) : (
+                      "-"
+                    )
+                  ) : (
+                    value
+                  )}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      );
+    },
     renderBottomToolbarCustomActions: () => (
-      <Typography>
+      <Typography className="text-gray-400">
         Fetched {totalFetched} of {totalDBRowCount} total rows.
       </Typography>
     ),
@@ -329,7 +431,7 @@ export const CompanyDetails = () => {
       globalFilter,
       isLoading,
       showAlertBanner: isError,
-      showProgressBars: isFetching,
+      showSkeletons: isFetching,
       sorting,
     },
     rowVirtualizerInstanceRef, //get access to the virtualizer instance
@@ -357,11 +459,9 @@ export const CompanyDetails = () => {
       <hr className="my-3 h-px border-0 bg-gray-200 " />
 
       {/* <SearchInput onSearch={onSearch} /> */}
-      <div className="max-h-[85vh] overflow-auto">
-        <MaterialReactTable
-          table={table}
-        />
-      </div>
+
+      <MaterialReactTable table={table} />
+
       {modalIsOpen === true && (
         <ExportToNotion
           modalIsOpen={modalIsOpen}
