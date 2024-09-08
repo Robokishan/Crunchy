@@ -23,7 +23,7 @@ import {
 } from "react";
 import { type CompayDetail } from "~/utils/types";
 import ExportToNotion from "../ExportNotionModal";
-import SearchInput from "../SearchInput";
+import { isServer } from "../../utils/serverSide/isServer";
 
 type UserApiResponse = {
   results: Array<CompayDetail>;
@@ -56,9 +56,7 @@ export const CompanyDetails = () => {
       queryFn: async ({ pageParam }) => {
         const url = new URL(
           "/public/comp",
-          process.env.NODE_ENV === "production"
-            ? "https://www.material-react-table.com"
-            : "http://localhost:8001"
+          isServer() ? process.env.CRUNCHY_REST : `http://${window.location.hostname}:8001`
         );
         url.searchParams.set("page", `${(pageParam as number) ?? 1}`);
         url.searchParams.set("filters", JSON.stringify(columnFilters ?? []));
