@@ -1,5 +1,5 @@
 # build environment
-FROM node:18-alpine as deps
+FROM node:18-alpine3.20 as deps
 WORKDIR /opt/app
 
 # RUN apk --update add git openssh-client && \
@@ -14,7 +14,7 @@ RUN yarn install --production && \
     # Install dev dependencies
     yarn install --production=false
 
-FROM node:18-alpine as builder
+FROM node:18-alpine3.20 as builder
 ENV NODE_OPTIONS=--max_old_space_size=2048
 WORKDIR /opt/app
 COPY . .
@@ -22,7 +22,7 @@ COPY --from=deps /opt/app/node_modules ./node_modules
 RUN yarn build && \
     rm -rf node_modules
 
-FROM node:18-alpine as runner
+FROM node:18-alpine3.20 as runner
 WORKDIR /opt/app
 
 # COPY --from=builder /opt/app/next-i18next.config.js ./
