@@ -72,7 +72,8 @@ export const CompanyDetails = () => {
       },
       initialPageParam: 1,
       getNextPageParam: (_lastGroup, groups) => groups.length,
-      refetchOnWindowFocus: false,
+      refetchOnWindowFocus: true,
+      refetchInterval: 5000,
     });
 
   const openExportModal = useCallback(
