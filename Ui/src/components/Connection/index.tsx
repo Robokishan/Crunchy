@@ -82,7 +82,7 @@ export const Connection = () => {
           label="Source"
           labelId="source-Label-Type"
           selectId="source-select"
-          handleChange={(e) => setSourceType(e.target.value)}
+          handleChange={(e :any) => setSourceType(e.target.value)}
         />
       </FormControl>
       <FormControl variant="standard" sx={{ m: 1, minWidth: 120 }}>
@@ -98,7 +98,7 @@ export const Connection = () => {
           label="Target"
           labelId="target-Label-Type"
           selectId="target-select"
-          handleChange={(e) => setTargetType(e.target.value)}
+          handleChange={(e :any) => setTargetType(e.target.value)}
         />
       </FormControl>
       <button
