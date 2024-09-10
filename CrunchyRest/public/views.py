@@ -7,9 +7,12 @@ from django.db.models import Q
 from knowledgeGraph import db
 from rest_framework import pagination
 import json
+
+
 class CompanyPagination(pagination.PageNumberPagination):
     page_size = 100
     max_page_size = 300
+
 
 class CompaniesListView(generics.ListAPIView):
     serializer_class = CrunchbaseSerializer
@@ -17,7 +20,7 @@ class CompaniesListView(generics.ListAPIView):
 
     def get_queryset(self):
         queryset = Crunchbase.objects.order_by("-updated_at")
-        
+
         filter_conditions = Q()
         filters = self.request.GET.get('filters', None)
         sorting = self.request.GET.get('sorting', None)
@@ -36,7 +39,16 @@ class CompaniesListView(generics.ListAPIView):
                 if filter["id"] == "name":
                     filter_conditions &= Q(name__icontains=filter["value"])
                 elif filter["id"] == "description":
-                    filter_conditions &= Q(description__icontains=filter["value"])
+                    filter_conditions &= Q(
+                        description__icontains=filter["value"])
+                elif filter["id"] == "industries":
+                    filter_conditions &= Q(
+                        industries__icontains=filter["value"])
+                elif filter["id"] == "lastfunding":
+                    filter_conditions &= Q(
+                        lastfunding__icontains=filter["value"])
+                elif filter["id"] == "website":
+                    filter_conditions &= Q(website__icontains=filter["value"])
             if len(filters) > 0:
                 queryset = queryset.filter(filter_conditions)
 
@@ -61,7 +73,7 @@ def connection(request):
     industry = request.GET.get("industry", None)
     key = request.GET.get("key", None)
 
-    if industry and key == "company": 
+    if industry and key == "company":
         val = db.get_companies_by_industry(industry)
         return Response(val)
     elif industry and key == "founder":
@@ -70,7 +82,7 @@ def connection(request):
     elif industry and key == "industry":
         val = db.get_industry_by_industry(industry)
         return Response(val)
-    
+
     elif founder and key == "company":
         val = db.get_companies_by_founder(founder)
         return Response(val)
@@ -80,7 +92,7 @@ def connection(request):
     elif founder and key == "industry":
         val = db.get_industry_by_founder(founder)
         return Response(val)
-    
+
     elif company and key == "company":
         val = db.get_companies_by_company(company)
         return Response(val)
