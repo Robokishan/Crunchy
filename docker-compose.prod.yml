@@ -119,19 +119,19 @@ services:
   #     - '/var/run/docker.sock:/var/run/docker.sock'
   #     - 'portainer_data:/data'
 
-  # watchtower:
-  #   command: 'crawler api ui bucket --interval 86400 --debug --remove-volumes --cleanup --include-restarting'
-  #   container_name: watchtower
-  #   environment:
-  #     - REPO_USER=${DOCKER_USERNAME}
-  #     - REPO_PASS=${DOCKER_PASSWORD}
-  #   image: 'containrrr/watchtower:1.2.1'
-  #   logging:
-  #     options: {max-size: 5m}
-  #   privileged: true
-  #   restart: always
-  #   volumes:
-  #     - '/var/run/docker.sock:/var/run/docker.sock'
+  watchtower:
+    command: 'crawler api ui bucket --interval 3600 --debug --remove-volumes --cleanup --include-restarting'
+    container_name: watchtower
+    environment:
+      - REPO_USER=${DOCKER_USERNAME}
+      - REPO_PASS=${DOCKER_PASSWORD}
+    image: 'containrrr/watchtower:1.2.1'
+    logging:
+      options: {max-size: 5m}
+    privileged: true
+    restart: always
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock'
   # mongodb:
   #   image: "mongo:5.0"
   #   restart: always
