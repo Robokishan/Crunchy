@@ -1,6 +1,8 @@
 import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/solid";
-import { Typography } from "@mui/material";
+import LoadingButton from "@mui/lab/LoadingButton";
+import { Button, Typography } from "@mui/material";
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { differenceInMinutes, format, formatDistance } from "date-fns";
 import {
   MaterialReactTable,
   type MRT_ColumnDef,
@@ -19,24 +21,17 @@ import {
   useRef,
   useState,
 } from "react";
-import { type CompayDetail } from "~/utils/types";
-import ExportToNotion from "../ExportNotionModal";
-import { getBaseURL } from "../../utils/baseUrl";
+import toast, { Toaster } from "react-hot-toast";
+import { isUrl } from "~/utils";
 import crunchyClient from "~/utils/crunchyClient";
-import { formatDistance, format, differenceInMinutes } from "date-fns";
+import { type CompayDetail } from "~/utils/types";
+import { getBaseURL } from "../../utils/baseUrl";
+import CreateCrawl from "../CreateCrawl";
+import ExportToNotion from "../ExportNotionModal";
 
 type UserApiResponse = {
   results: Array<CompayDetail>;
   count: number;
-};
-
-const isUrl = (value: string) => {
-  try {
-    new URL(value);
-    return true;
-  } catch (_) {
-    return false;
-  }
 };
 
 export const CompanyDetails = () => {
@@ -44,6 +39,7 @@ export const CompanyDetails = () => {
   const rowVirtualizerInstanceRef =
     useRef<MRT_RowVirtualizer<HTMLDivElement, HTMLTableRowElement>>(null);
   const [modalIsOpen, setModal] = useState(false);
+  const [crawlModalIsOpen, setOpenCrawlModal] = useState(false);
   const [modalData, setModalData] = useState();
   const [columnFilters, setColumnFilters] = useState<MRT_ColumnFiltersState>(
     []
@@ -320,6 +316,61 @@ export const CompanyDetails = () => {
         ),
         size: 500,
       },
+      {
+        header: "Action",
+        Cell: ({ cell }) => {
+          const [loading, setLoading] = useState(false);
+          const [retried, setRetried] = useState<"init" | "done" | "error">(
+            "init"
+          );
+          function handleClick() {
+            setLoading(true);
+            const retryPromise = crunchyClient.post("/api/crawl/create", {
+              url: [cell.row.original.crunchbase_url],
+            });
+            toast.promise(retryPromise, {
+              loading: "Pushing to queue",
+              success: "Pushed to queue",
+              error: "Error pushing to queue",
+            });
+            retryPromise
+              .then(() => {
+                setRetried("done");
+              })
+              .catch(() => {
+                setRetried("error");
+              })
+              .finally(() => setLoading(false));
+          }
+
+          return (
+            <>
+              <LoadingButton
+                size="small"
+                onClick={handleClick}
+                disabled={retried === "done"}
+                loading={loading}
+                loadingIndicator="Pushing.."
+                color={
+                  retried === "done"
+                    ? "success"
+                    : retried === "error"
+                    ? "error"
+                    : "primary"
+                }
+                variant="outlined"
+              >
+                {retried === "init"
+                  ? "Retry"
+                  : retried === "done"
+                  ? "Pushed🔥"
+                  : "Error!"}
+              </LoadingButton>
+            </>
+          );
+        },
+        size: 500,
+      },
     ],
     []
   );
@@ -335,6 +386,7 @@ export const CompanyDetails = () => {
     muiSkeletonProps: {
       animation: "wave",
     },
+    enableColumnPinning: true,
     muiTableContainerProps: {
       ref: tableContainerRef, //get access to the table container element
       sx: { maxHeight: "600px" }, //give the table a max height
@@ -449,6 +501,15 @@ export const CompanyDetails = () => {
         <h3 className="mr-5 text-center text-lg text-gray-400">
           {totalDBRowCount}
         </h3>
+        <Button
+          onClick={() => {
+            setOpenCrawlModal(true);
+          }}
+          variant="outlined"
+          color="primary"
+        >
+          Create Crawl
+        </Button>
         <span className="relative flex h-3 w-3">
           {isLoading && (
             <>
@@ -471,6 +532,13 @@ export const CompanyDetails = () => {
           setModal={setModal}
         />
       )}
+      {crawlModalIsOpen === true && (
+        <CreateCrawl
+          modalIsOpen={crawlModalIsOpen}
+          setModal={setOpenCrawlModal}
+        />
+      )}
+      <Toaster />
     </div>
   );
 };
