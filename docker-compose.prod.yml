@@ -34,7 +34,7 @@ services:
 
   crawler:
     container_name: crawler
-    image: "robokishan/crunchy:crawler"
+    image: "index.docker.io/robokishan/crunchy:crawler"
     command: bash -c "./wait-for-it.sh rabbitmq:5672 -t 0 -- python3 ./go-crunchy.py"
     restart: always
     env_file:
@@ -47,7 +47,7 @@ services:
 
   api:
     container_name: api
-    image: "robokishan/crunchy:rest"
+    image: "index.docker.io/robokishan/crunchy:rest"
     restart: always
     # command: bash -c "python manage.py runserver 0.0.0.0:8000"
     command: bash -c "./wait-for-it.sh rabbitmq:5672 -t 0 -- python manage.py runserver 0.0.0.0:8000"
@@ -63,7 +63,7 @@ services:
 
   databucket:
     container_name: bucket
-    image: "robokishan/crunchy:rest"
+    image: "index.docker.io/robokishan/crunchy:rest"
     # command: bash -c "python manage.py gather_data_from_kafka"
     command: bash -c "./wait-for-it.sh rabbitmq:5672 -t 0 -- python manage.py gather_data_from_kafka"
     restart: always
@@ -77,7 +77,7 @@ services:
 
   ui:
     container_name: ui
-    image: "robokishan/crunchy:ui"
+    image: "index.docker.io/robokishan/crunchy:ui"
     restart: always
     ports:
       - "5051:80"
