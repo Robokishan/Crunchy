@@ -115,6 +115,7 @@ services:
     container_name: fluentd
     image: robokishan/crunchy:fluentd
     build: ./fluentd
+    restart: always
     ports:
       - "24224:24224"       # Fluentd's TCP port
       - "24224:24224/udp"   # Fluentd's UDP port
