@@ -26,7 +26,7 @@ class KafkaPipeline:
 
     def __init__(self, producer_conf, topic):
         # Create a Kafka producer
-        self.producer = Producer(producer_conf)
+        self.producer = Producer(producer_conf, logger=logger)
         self.topic = topic
 
     def process_item(self, item, spider):

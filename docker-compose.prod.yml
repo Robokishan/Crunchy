@@ -42,6 +42,11 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 127.0.0.1:24224  # Address of Fluentd
+        tag: "docker.{{.Name}}"  # Tag for easier identification of logs
     links: 
         - rabbitmq
 
@@ -88,7 +93,7 @@ services:
 
   rabbitmq:
     container_name: queue
-    image: "rabbitmq:3.12.6-management-alpine"
+    image: "rabbitmq:management-alpine"
     restart: always
     hostname: queue
     ports:
@@ -105,6 +110,20 @@ services:
       interval: 5s
       timeout: 10s
       retries: 5
+
+  fluentd:
+    container_name: fluentd
+    image: robokishan/crunchy:fluentd
+    build: ./fluentd
+    ports:
+      - "24224:24224"       # Fluentd's TCP port
+      - "24224:24224/udp"   # Fluentd's UDP port
+    volumes:
+      - ./fluentd:/fluentd/etc  # Mount Fluentd configuration
+      - ./logs:/fluentd/logs    # Volume to store Fluentd output logs
+    environment:
+      - NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}
+      - FLUENTD_CONF=fluentd.conf  # Use custom configuration
     
   # portainer:
   #   container_name: portainer

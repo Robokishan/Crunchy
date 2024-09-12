@@ -7,6 +7,9 @@
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
+import sys
+import json
+import inspect
 import os
 from decouple import config as DefaultConfig
 from decouple import Config, RepositoryEnv
@@ -41,9 +44,9 @@ of all scrapy default middleware
 because of same process_exception running multiple times
 '''
 # playwright
-SPIDER_MIDDLEWARES = { 
-    'CrunchyCrawler.middlewares.RabbitMQSpiderMiddleware' : 1000 ,
-    'CrunchyCrawler.middlewares.TestSpiderMiddleware1' : 1002,
+SPIDER_MIDDLEWARES = {
+    'CrunchyCrawler.middlewares.RabbitMQSpiderMiddleware': 1000,
+    'CrunchyCrawler.middlewares.TestSpiderMiddleware1': 1002,
 }
 
 
@@ -80,7 +83,8 @@ RB_MAIN_ROUTING_KEY = config('RABBIT_MQ_MAIN_ROUTING_KEY', cast=str)
 RB_MAIN_QUEUE = config('RABBIT_MQ_MAIN_QUEUE', cast=str)
 
 RABBIT_MQ_PRIORITY_EXCHANGE = config('RABBIT_MQ_PRIORITY_EXCHANGE', cast=str)
-RABBIT_MQ_PRIORITY_ROUTING_KEY = config('RABBIT_MQ_PRIORITY_ROUTING_KEY', cast=str)
+RABBIT_MQ_PRIORITY_ROUTING_KEY = config(
+    'RABBIT_MQ_PRIORITY_ROUTING_KEY', cast=str)
 RABBIT_MQ_PRIORITY_QUEUE = config('RABBIT_MQ_PRIORITY_QUEUE', cast=str)
 
 LOG_ENABLED = False
@@ -175,7 +179,7 @@ REQUEST_FINGERPRINTER_IMPLEMENTATION = "2.7"
 TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 FEED_EXPORT_ENCODING = "utf-8"
 
-import inspect
+
 class InterceptHandler(logging.Handler):
     def emit(self, record: logging.LogRecord) -> None:
         # Get corresponding Loguru level if it exists.
@@ -191,6 +195,30 @@ class InterceptHandler(logging.Handler):
             frame = frame.f_back
             depth += 1
 
-        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
+        logger.opt(depth=depth, exception=record.exc_info).log(
+            level, record.getMessage())
+
+
 # Configure Loguru to handle all logs
 logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
+
+
+def flatten_loguru_log(message):
+    # https://github.com/Delgan/loguru/issues/1006
+    message_json = json.loads(message)
+    message_json = json.loads(message)
+    message_json = message_json["record"]
+    message_json["level"] = message_json["level"]["name"]
+    message_json['timestamp'] = message_json['time']['repr']
+    message_json["time"] = message_json["time"]["timestamp"]
+    serialized = json.dumps(message_json, default=str, ensure_ascii=False)
+    sys.stderr.write(serialized + "\n")
+
+
+if ENVIORNMENT == "prod":
+    logger.remove(0)
+    logger.add(
+        flatten_loguru_log,  # Custom sink function
+        format="{time} | {level} | {message}| ",
+        serialize=True
+    )
