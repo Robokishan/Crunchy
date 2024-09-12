@@ -124,6 +124,8 @@ services:
     environment:
       - NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}
       - FLUENTD_CONF=fluentd.conf  # Use custom configuration
+      - MALLOC_ARENA_MAX=2
+      - LD_PRELOAD=""
     
   # portainer:
   #   container_name: portainer
