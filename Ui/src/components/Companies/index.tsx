@@ -389,7 +389,7 @@ export const CompanyDetails = () => {
     enableColumnPinning: true,
     muiTableContainerProps: {
       ref: tableContainerRef, //get access to the table container element
-      sx: { maxHeight: "600px" }, //give the table a max height
+      sx: { maxHeight: "80vh" }, //give the table a max height
       onScroll: (event: UIEvent<HTMLDivElement>) =>
         fetchMoreOnBottomReached(event.target as HTMLDivElement), //add an event listener to the table container element
     },
