@@ -216,6 +216,7 @@ export const CompanyDetails = () => {
       {
         accessorKey: "funding_usd",
         header: "Funding USD",
+        filterVariant: "range",
         Cell: ({ cell }) => <>{cell.getValue() ?? "-"}</>,
       },
       {

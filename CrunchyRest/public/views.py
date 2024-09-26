@@ -49,6 +49,20 @@ class CompaniesListView(generics.ListAPIView):
                         lastfunding__icontains=filter["value"])
                 elif filter["id"] == "website":
                     filter_conditions &= Q(website__icontains=filter["value"])
+                elif filter["id"] == "funding_usd":
+                    try:
+                        filter["value"] = [
+                            int(v) if v is not None and v != "" else None for v in filter["value"]]
+                        # value will be ["10",null] first element is gte and second element is lte
+                        if filter["value"][0] != None:
+                            filter_conditions &= Q(
+                                funding_usd__gte=filter["value"][0])
+                        if filter["value"][1] != None:
+                            filter_conditions &= Q(
+                                funding_usd__lte=filter["value"][1])
+                    except ValueError as e:
+                        print(e)
+
             if len(filters) > 0:
                 queryset = queryset.filter(filter_conditions)
 

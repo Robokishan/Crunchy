@@ -73,6 +73,8 @@ class RabbitMQManager:
 
     @staticmethod
     def connect_to_rabbitmq():
+        if settings.RABBITMQ_URL is None:
+            return
         parameters = pika.URLParameters(connection_string)
         connection = pika.BlockingConnection(parameters)
         channel = connection.channel()
