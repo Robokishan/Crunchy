@@ -1,6 +1,7 @@
 from django.core.management import BaseCommand
 from rabbitmq.apps import RabbitMQManager
 from databucket.models import Crunchbase
+from databucket.models import InterestedIndustries
 from kafka.consumer import Subscriber
 import regex as re
 from utils.Currency import CurrencyConverter
@@ -69,6 +70,8 @@ class Command(BaseCommand):
                 data['funding_usd'] = 0
                 data['rate'] = 0
 
+            industries = [industry.strip()
+                          for industry in data.get('industries', [])]
             crunchbase, created = Crunchbase.objects.update_or_create(
                 crunchbase_url=data['crunchbase_url'],
                 defaults={
@@ -83,7 +86,7 @@ class Command(BaseCommand):
                     'description': data.get('description'),
                     'long_description': data.get('long_description'),
                     'acquired': data.get('acquired'),
-                    'industries': [industry.strip() for industry in data.get('industries', [])],
+                    'industries': industries,
                     'founded': data.get('founded'),
                     'lastfunding': data.get('lastfunding'),
                     'stocksymbol': data.get('stock_symbol')
@@ -91,16 +94,27 @@ class Command(BaseCommand):
                 }
             )
             print("Created:", crunchbase, created, data)
-            if data.get('similar_companies'):
-                for company in data['similar_companies']:
-                    try:
-                        isFound = Crunchbase.objects.get(
-                            crunchbase_url=company)
-                        print("Company already found", isFound, company)
-                    except Exception as e:
-                        # this company didn't found in database
-                        print("sending company back to queue", company)
-                        RabbitMQManager.publish_message(company)
+
+            interested_industries = InterestedIndustries.objects.get(
+                key='industry')
+
+            print("Interested Industries:", interested_industries.industries)
+
+            # if any industries is inside interested industries then print included
+            for industry in industries:
+                if industry in interested_industries.industries:
+                    if data.get('similar_companies'):
+                        for company in data['similar_companies']:
+                            try:
+                                isFound = Crunchbase.objects.get(
+                                    crunchbase_url=company)
+                                print("Company already found",
+                                      isFound, company)
+                            except Exception as e:
+                                # this company didn't found in database
+                                print("sending company back to queue", company)
+                                RabbitMQManager.publish_message(company)
+
             return True
         except Exception as e:
             print("Error", e)

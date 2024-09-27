@@ -15,16 +15,26 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Crunchbase',
             fields=[
-                ('_id', djongo.models.fields.ObjectIdField(auto_created=True, primary_key=True, serialize=False)),
+                ('_id', djongo.models.fields.ObjectIdField(
+                    auto_created=True, primary_key=True, serialize=False)),
                 ('name', models.TextField()),
                 ('funding', models.TextField()),
+                ('funding_usd', models.FloatField()),
+                ('rate', models.FloatField()),
                 ('website', models.URLField()),
                 ('crunchbase_url', models.URLField()),
                 ('logo', models.URLField()),
                 ('founders', djongo.models.fields.JSONField(default=[])),
+                ('similar_companies', djongo.models.fields.JSONField(default=[])),
                 ('description', models.TextField()),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
+                ('long_description', models.TextField()),
+                ('acquired', models.TextField()),
+                ('industries', djongo.models.fields.JSONField(default=[])),
+                ('founded', models.TextField()),
+                ('lastfunding', models.TextField()),
+                ('stocksymbol', models.TextField()),
             ],
         ),
     ]

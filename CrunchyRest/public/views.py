@@ -2,11 +2,14 @@ from rest_framework.decorators import api_view
 from rest_framework import generics
 from rest_framework.response import Response
 from databucket.serializer import CrunchbaseSerializer
+# from databucket.serializer import IndustrySerializer
 from databucket.models import Crunchbase
+from databucket.models import InterestedIndustries
 from django.db.models import Q
 from knowledgeGraph import db
 from rest_framework import pagination
 import json
+from rest_framework import serializers
 
 
 class CompanyPagination(pagination.PageNumberPagination):
@@ -119,3 +122,52 @@ def connection(request):
 
     else:
         return Response("No search query", status=400)
+
+
+class SettingsList(generics.ListAPIView):
+    class IndustrySerializer(serializers.Serializer):
+        industries = serializers.ListField(
+            child=serializers.CharField()
+        )
+        interested_industries = serializers.ListField(
+            child=serializers.CharField()
+        )
+
+    serializer_class = IndustrySerializer
+
+    def get_queryset(self):
+        interested_industries = InterestedIndustries.objects.get(
+            key="industry").industries
+
+        queryset = Crunchbase.objects.values_list(
+            'industries', flat=True).distinct()
+
+        if interested_industries:
+            queryset = queryset.exclude(industries__in=[interested_industries])
+
+        # Flatten the list of industries
+        industries_list = []
+        for industries in queryset:
+            if isinstance(industries, list):
+                # exclude interested industries
+                industries = [
+                    industry for industry in industries if industry not in interested_industries]
+                industries_list.extend(industries)
+            else:
+                industries_list.append(industries)
+
+        industries_list = sorted(set(industries_list))
+        return industries_list, interested_industries
+
+    def list(self, request, *args, **kwargs):
+        queryset, interested_industries = self.get_queryset()
+        data = {'industries': queryset,
+                'interested_industries': interested_industries}
+        serializer = self.get_serializer(data)
+        return Response(serializer.data)
+
+    def post(self, request):
+        industries = request.data.get("industry", [])
+        InterestedIndustries.objects.update_or_create(
+            key="industry", defaults={"industries": industries})
+        return Response("success")

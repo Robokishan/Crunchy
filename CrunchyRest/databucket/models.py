@@ -23,4 +23,9 @@ class Crunchbase(models.Model):
     founded = models.TextField()
     lastfunding = models.TextField()
     stocksymbol = models.TextField()
-    
+
+
+class InterestedIndustries(models.Model):
+    _id = models.ObjectIdField()
+    industries = models.JSONField(default=[])
+    key = models.TextField()
