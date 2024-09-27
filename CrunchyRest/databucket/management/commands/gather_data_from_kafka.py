@@ -6,12 +6,13 @@ import regex as re
 from utils.Currency import CurrencyConverter
 import pycountry
 
+
 class Command(BaseCommand):
     def handle(self, *args, **options):
         subscriber = Subscriber(callback=self.callback)
         subscriber.connect()
         subscriber.run()
-    
+
     def get_currency_in_usd(self, funding):
         try:
             currencyConvert = CurrencyConverter()
@@ -27,24 +28,30 @@ class Command(BaseCommand):
                 match = re.match(r'([\d\.]+)([A-Za-z]?)', amount_str)
                 if match:
                     number, multiplier = match.groups()
-                    currency_amount = float(number) * currencyConvert.get_multiplier(multiplier)
-                    currency_code = currencyConvert.symbol_to_currency_code(currency_symbol)
+                    currency_amount = float(
+                        number) * currencyConvert.get_multiplier(multiplier)
+                    currency_code = currencyConvert.symbol_to_currency_code(
+                        currency_symbol)
 
             # handle currency with currency code
             elif funding and funding != '—':
                 # sample USD1.5M, EUR1.5M, GBP1.5M, JPY1.5M, INR1.5M
-                currency_code_pattern = re.compile(r'([A-Z]{3})(\d+(\.\d+)?)([A-Za-z]?)')
+                currency_code_pattern = re.compile(
+                    r'([A-Z]{3})(\d+(\.\d+)?)([A-Za-z]?)')
                 match = currency_code_pattern.match(funding)
-                if match:    
+                if match:
                     currency_code, amount, _, suffix = match.groups()
-                    currency_amount = float(amount) * currencyConvert.get_multiplier(suffix)
-                    currency_code = pycountry.currencies.get(alpha_3=currency_code).alpha_3
-            
+                    currency_amount = float(
+                        amount) * currencyConvert.get_multiplier(suffix)
+                    currency_code = pycountry.currencies.get(
+                        alpha_3=currency_code).alpha_3
+
             if currency_amount and currency_code:
-                currency_amount_usd, rate = currencyConvert.convert(currency_amount, currency_code,'USD')
+                currency_amount_usd, rate = currencyConvert.convert(
+                    currency_amount, currency_code, 'USD')
                 return currency_amount_usd, rate, currency_code, currency_amount
         except Exception as e:
-            print(f"Currency Conversion: {e}")    
+            print(f"Currency Conversion: {e}")
         return None
 
     def callback(self, data):
@@ -61,7 +68,7 @@ class Command(BaseCommand):
             else:
                 data['funding_usd'] = 0
                 data['rate'] = 0
-                
+
             crunchbase, created = Crunchbase.objects.update_or_create(
                 crunchbase_url=data['crunchbase_url'],
                 defaults={
@@ -76,7 +83,7 @@ class Command(BaseCommand):
                     'description': data.get('description'),
                     'long_description': data.get('long_description'),
                     'acquired': data.get('acquired'),
-                    'industries': data.get('industries', []),
+                    'industries': [industry.strip() for industry in data.get('industries', [])],
                     'founded': data.get('founded'),
                     'lastfunding': data.get('lastfunding'),
                     'stocksymbol': data.get('stock_symbol')
