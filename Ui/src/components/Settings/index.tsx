@@ -9,12 +9,15 @@ import { useEffect, useRef, useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import useSWR from "swr";
 import crunchyClient from "~/utils/crunchyClient";
+import Switch from "@mui/material/Switch";
+import { TextareaAutosize } from "@mui/material";
 
 const DEFAULT_URL = "/public/settings";
 
 export const Settings = () => {
   const [fetchedData, setData] = useState([]);
   const abortConRef = useRef<AbortController>();
+  const [settingsView, setSettingsView] = useState<"text" | "list">("list");
 
   const [url, setSearchUrl] = useState(DEFAULT_URL);
   const {
@@ -77,87 +80,139 @@ export const Settings = () => {
         <h1 className="mr-5 text-center text-xl text-gray-400">Settings</h1>
       </div>
       <hr className="my-3 h-px border-0 bg-gray-200 " />
+      <Switch
+        checked={settingsView === "list"}
+        onChange={() =>
+          setSettingsView((prev) => (prev === "list" ? "text" : "list"))
+        }
+        aria-label="toggle-ui-settings"
+      />
       {isFetching || isLoading ? (
         <h1>Loading...</h1>
-      ) : (
-        <Grid2 container>
-          <Grid2>
-            <List
-              sx={{ width: "100%", maxWidth: 360, bgcolor: "background.paper" }}
-            >
-              {data?.data.industries.map((value: any) => {
-                const labelId = `checkbox-list-label-${value}`;
+      ) : settingsView === "list" ? (
+        <>
+          <Grid2 container>
+            <Grid2 size={4}>
+              <List
+                sx={{
+                  width: "100%",
+                  maxWidth: 360,
+                  bgcolor: "background.paper",
+                }}
+              >
+                {data?.data.industries.map((value: any) => {
+                  const labelId = `checkbox-list-label-${value}`;
 
-                return (
-                  <ListItem key={value} disablePadding>
-                    <ListItemButton
-                      role={undefined}
-                      onClick={handleToggle(value)}
-                      dense
-                    >
-                      <ListItemIcon>
-                        <Checkbox
-                          edge="start"
-                          checked={checked.includes(value)}
-                          tabIndex={-1}
-                          disableRipple
-                          inputProps={{ "aria-labelledby": labelId }}
-                        />
-                      </ListItemIcon>
-                      <ListItemText id={labelId} primary={value} />
-                    </ListItemButton>
-                  </ListItem>
-                );
-              })}
-            </List>
+                  return (
+                    <ListItem key={value} disablePadding>
+                      <ListItemButton
+                        role={undefined}
+                        onClick={handleToggle(value)}
+                        dense
+                      >
+                        <ListItemIcon>
+                          <Checkbox
+                            edge="start"
+                            checked={checked.includes(value)}
+                            tabIndex={-1}
+                            disableRipple
+                            inputProps={{ "aria-labelledby": labelId }}
+                          />
+                        </ListItemIcon>
+                        <ListItemText id={labelId} primary={value} />
+                      </ListItemButton>
+                    </ListItem>
+                  );
+                })}
+              </List>
+            </Grid2>
+            {/* vertical straight line */}
+
+            <Grid2>
+              <Button
+                sx={{
+                  color: "blue",
+                  marginRight: "10px",
+                }}
+                variant="contained"
+                onClick={() => save()}
+              >
+                <h1>Save</h1>
+              </Button>
+            </Grid2>
+
+            <Grid2 size={4}>
+              <List
+                sx={{
+                  width: "100%",
+                  maxWidth: 360,
+                  bgcolor: "background.paper",
+                }}
+              >
+                {data?.data.interested_industries.map((value: any) => {
+                  const labelId = `checkbox-list-label-${value}`;
+
+                  return (
+                    <ListItem key={value} disablePadding>
+                      <ListItemButton
+                        role={undefined}
+                        onClick={handleToggle(value)}
+                        dense
+                      >
+                        <ListItemIcon>
+                          <Checkbox
+                            edge="start"
+                            checked={checked.includes(value)}
+                            tabIndex={-1}
+                            disableRipple
+                            inputProps={{ "aria-labelledby": labelId }}
+                          />
+                        </ListItemIcon>
+                        <ListItemText id={labelId} primary={value} />
+                      </ListItemButton>
+                    </ListItem>
+                  );
+                })}
+              </List>
+            </Grid2>
+          </Grid2>
+        </>
+      ) : settingsView === "text" ? (
+        <Grid2 container spacing={3}>
+          <Grid2 size={6}>
+            <TextareaAutosize
+              maxRows={50}
+              name="name"
+              placeholder="Name"
+              value={JSON.stringify(data?.data.industries, null, 2)}
+              style={{
+                padding: "10px",
+                width: "100%",
+                background: "#353B43",
+                color: "#F9F9F9",
+                fontFamily: "monospace",
+              }}
+            />
           </Grid2>
           {/* vertical straight line */}
 
-          <Grid2>
-            <Button
-              sx={{
-                color: "blue",
-                marginRight: "10px",
+          <Grid2 size={6}>
+            <TextareaAutosize
+              maxRows={50}
+              name="name"
+              placeholder="Name"
+              value={JSON.stringify(data?.data.interested_industries, null, 2)}
+              style={{
+                padding: "10px",
+                width: "100%",
+                background: "#353B43",
+                color: "#F9F9F9",
+                fontFamily: "monospace",
               }}
-              variant="contained"
-              onClick={() => save()}
-            >
-              <h1>Save</h1>
-            </Button>
-          </Grid2>
-
-          <Grid2>
-            <List
-              sx={{ width: "100%", maxWidth: 360, bgcolor: "background.paper" }}
-            >
-              {data?.data.interested_industries.map((value: any) => {
-                const labelId = `checkbox-list-label-${value}`;
-
-                return (
-                  <ListItem key={value} disablePadding>
-                    <ListItemButton
-                      role={undefined}
-                      onClick={handleToggle(value)}
-                      dense
-                    >
-                      <ListItemIcon>
-                        <Checkbox
-                          edge="start"
-                          checked={checked.includes(value)}
-                          tabIndex={-1}
-                          disableRipple
-                          inputProps={{ "aria-labelledby": labelId }}
-                        />
-                      </ListItemIcon>
-                      <ListItemText id={labelId} primary={value} />
-                    </ListItemButton>
-                  </ListItem>
-                );
-              })}
-            </List>
+            />
           </Grid2>
         </Grid2>
-      )}
+      ) : null}
     </div>
   );
 };
