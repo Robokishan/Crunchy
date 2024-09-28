@@ -2,7 +2,6 @@ from rest_framework.decorators import api_view
 from rest_framework import generics
 from rest_framework.response import Response
 from databucket.serializer import CrunchbaseSerializer
-# from databucket.serializer import IndustrySerializer
 from databucket.models import Crunchbase
 from databucket.models import InterestedIndustries
 from django.db.models import Q
@@ -10,6 +9,7 @@ from knowledgeGraph import db
 from rest_framework import pagination
 import json
 from rest_framework import serializers
+from rabbitmq.apps import RabbitMQManager
 
 
 class CompanyPagination(pagination.PageNumberPagination):
@@ -171,3 +171,17 @@ class SettingsList(generics.ListAPIView):
         InterestedIndustries.objects.update_or_create(
             key="industry", defaults={"industries": industries})
         return Response("success")
+
+
+@api_view(['GET'])
+def PendingInQueue(request):
+    priorityPending_messages = RabbitMQManager.get_pending_in_priority_queue()
+    normalPending_messages = RabbitMQManager.get_pending_in_normal_queue()
+
+    if priorityPending_messages is None:
+        priorityPending_messages = 0
+
+    if normalPending_messages is None:
+        normalPending_messages = 0
+
+    return Response({"priority": priorityPending_messages, "normal": normalPending_messages})

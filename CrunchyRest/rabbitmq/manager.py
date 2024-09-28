@@ -21,12 +21,10 @@ class RabbitMQManager:
     @classmethod
     def set_channel(cls, channel):
         cls._channel = channel
-    
+
     @classmethod
     def set_priority_channel(cls, channel):
-        cls._priority_channel= channel
-    
-    
+        cls._priority_channel = channel
 
     @classmethod
     def publish_message(cls, message):
@@ -63,7 +61,7 @@ class RabbitMQManager:
             exchange=exchange, routing_key=routing_key, body=message, properties=pika.BasicProperties(
                 delivery_mode=pika.spec.PERSISTENT_DELIVERY_MODE
             ))
-        
+
     @classmethod
     def _priority_publish(cls, message):
         cls._priority_channel.basic_publish(
@@ -88,13 +86,48 @@ class RabbitMQManager:
                            routing_key=routing_key)
 
         priority_channel.queue_declare(queue=priority_queue, durable=True)
-        priority_channel.exchange_declare(exchange=priority_exchange, exchange_type="direct")
+        priority_channel.exchange_declare(
+            exchange=priority_exchange, exchange_type="direct")
         priority_channel.queue_bind(queue=priority_queue, exchange=priority_exchange,
-                           routing_key=priority_routing_key)
+                                    routing_key=priority_routing_key)
 
         print("Connected to RabbitMQ")
         RabbitMQManager.set_channel(channel)
         RabbitMQManager.set_priority_channel(priority_channel)
+
+    @staticmethod
+    def get_pending_in_priority_queue():
+        if settings.RABBITMQ_URL is None:
+            return None
+
+        if RabbitMQManager._priority_channel is None or RabbitMQManager._priority_channel.is_closed:
+            try:
+                RabbitMQManager.connect_to_rabbitmq()
+            except Exception as e:
+                pass
+            return None
+
+        queue_state = RabbitMQManager._priority_channel.queue_declare(
+            queue=priority_queue, passive=True
+        )
+        return queue_state.method.message_count
+
+    @staticmethod
+    def get_pending_in_normal_queue():
+        if settings.RABBITMQ_URL is None:
+            return None
+
+        if RabbitMQManager._channel is None or RabbitMQManager._priority_channel.is_closed:
+            try:
+                RabbitMQManager.connect_to_rabbitmq()
+            except Exception as e:
+                pass
+            return None
+
+        queue_state = RabbitMQManager._channel.queue_declare(
+            queue=queue, passive=True
+        )
+        return queue_state.method.message_count
 
     @staticmethod
     def handle_connection_error(connection, error):

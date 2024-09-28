@@ -7,4 +7,5 @@ urlpatterns = [
     path('comp', CompaniesListView.as_view()),
     path('connection', views.connection),
     path('settings', SettingsList.as_view()),
+    path('pending', views.PendingInQueue),
 ]

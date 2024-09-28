@@ -28,6 +28,7 @@ import { type CompayDetail } from "~/utils/types";
 import { getBaseURL } from "../../utils/baseUrl";
 import CreateCrawl from "../CreateCrawl";
 import ExportToNotion from "../ExportNotionModal";
+import { Pending } from "../Pending";
 
 type UserApiResponse = {
   results: Array<CompayDetail>;
@@ -519,6 +520,7 @@ export const CompanyDetails = () => {
             </>
           )}
         </span>
+        <Pending />
       </div>
       <hr className="my-3 h-px border-0 bg-gray-200 " />
 
