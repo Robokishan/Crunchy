@@ -100,20 +100,24 @@ class Command(BaseCommand):
 
             print("Interested Industries:", interested_industries.industries)
 
+            send_similar_companies = False
+
             # if any industries is inside interested industries then print included
             for industry in industries:
                 if industry in interested_industries.industries:
-                    if data.get('similar_companies'):
-                        for company in data['similar_companies']:
-                            try:
-                                isFound = Crunchbase.objects.get(
-                                    crunchbase_url=company)
-                                print("Company already found",
-                                      isFound, company)
-                            except Exception as e:
-                                # this company didn't found in database
-                                print("sending company back to queue", company)
-                                RabbitMQManager.publish_message(company)
+                    send_similar_companies = True
+
+            if data.get('similar_companies') and send_similar_companies == True:
+                for company in data['similar_companies']:
+                    try:
+                        isFound = Crunchbase.objects.get(
+                            crunchbase_url=company)
+                        print("Company already found",
+                              isFound, company)
+                    except Exception as e:
+                        # this company didn't found in database
+                        print("sending company back to queue", company)
+                        RabbitMQManager.publish_message(company)
 
             return True
         except Exception as e:
