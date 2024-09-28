@@ -520,8 +520,8 @@ export const CompanyDetails = () => {
             </>
           )}
         </span>
-        <Pending />
       </div>
+      <Pending />
       <hr className="my-3 h-px border-0 bg-gray-200 " />
 
       {/* <SearchInput onSearch={onSearch} /> */}
