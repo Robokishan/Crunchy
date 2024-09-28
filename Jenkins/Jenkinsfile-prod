@@ -28,10 +28,6 @@ pipeline {
             dir('Ui') {
               sh 'docker build -t robokishan/crunchy:ui -f Dockerfile .'
             }
-                  } else {
-            echo 'Invalid service selected'
-            currentBuild.result = 'FAILURE'
-            return
           }
         }
       }
@@ -50,10 +46,6 @@ pipeline {
           }
           if (serviceName == 'ui' || serviceName == 'all') {
             sh 'docker image push robokishan/crunchy:ui'
-                } else {
-            echo 'Invalid service selected'
-            currentBuild.result = 'FAILURE'
-            return
           }
         }
       }
