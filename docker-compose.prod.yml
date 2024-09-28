@@ -110,6 +110,8 @@ services:
       interval: 5s
       timeout: 10s
       retries: 5
+    depends_on:
+      - fluentd
 
   fluentd:
     container_name: fluentd
