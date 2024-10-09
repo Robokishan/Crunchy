@@ -139,22 +139,20 @@ export const CompanyDetails = () => {
         enableSorting: false,
         Cell: ({ cell }) => {
           return (
-            <>
-              <div className="flex h-auto w-auto items-center gap-5">
-                <Link href={cell.row.original?.logo || "/image-broken.png"}>
-                  <Image
-                    src={cell.row.original?.logo || "/image-broken.png"}
-                    alt="company-icon"
-                    loading="lazy"
-                    width={40}
-                    height={40}
-                  />
-                </Link>
-                <button onClick={() => openExportModal(cell.row.original)}>
-                  <ArrowTopRightOnSquareIcon className="h-5 w-5 fill-gray-800" />
-                </button>
-              </div>
-            </>
+            <div className="flex h-auto w-auto items-center gap-5">
+              <Link href={cell.row.original?.logo || "/image-broken.png"}>
+                <Image
+                  src={cell.row.original?.logo || "/image-broken.png"}
+                  alt="company-icon"
+                  loading="lazy"
+                  width={40}
+                  height={40}
+                />
+              </Link>
+              <button onClick={() => openExportModal(cell.row.original)}>
+                <ArrowTopRightOnSquareIcon className="h-5 w-5 fill-gray-800" />
+              </button>
+            </div>
           );
         },
       },
