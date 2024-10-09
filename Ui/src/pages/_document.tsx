@@ -3,7 +3,7 @@ import Document, { Html, Head, Main, NextScript } from "next/document";
 class MyDocument extends Document {
   render() {
     return (
-      <Html>
+      <Html lang="en" className="notranslate" translate="no">
         <Head>
           {/* <link rel="manifest" href="/manifest.json"></link> */}
           <link rel="apple-touch-icon" href="/icon.png"></link>
