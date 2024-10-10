@@ -57,8 +57,11 @@ class HighlightsExtract(BaseExtract):
                         label = label.xpath(
                             '//text()').get().lstrip().rstrip().replace(' ', '')
                         if "TotalFunding" == label:
-                            item['funding'] = fields_card.xpath(
-                                '//field-formatter//text()').get().lstrip().rstrip().replace(' ', '')
+                            try:
+                                item['funding'] = fields_card.xpath(
+                                    '//field-formatter//text()').get().lstrip().rstrip().replace(' ', '')
+                            except Exception as e:
+                                pass
                 return item
         return None
 
