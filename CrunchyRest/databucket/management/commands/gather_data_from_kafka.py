@@ -72,26 +72,32 @@ class Command(BaseCommand):
 
             industries = [industry.strip()
                           for industry in data.get('industries', [])]
+            defaults = {
+                'name': data.get('name'),
+                'website': data.get('website'),
+                'logo': data.get('logo'),
+                'founders': data.get('founders', []),
+                'similar_companies': data.get('similar_companies', []),
+                'description': data.get('description'),
+                'long_description': data.get('long_description'),
+                'acquired': data.get('acquired'),
+                'industries': industries,
+                'founded': data.get('founded'),
+                'lastfunding': data.get('lastfunding'),
+                'stocksymbol': data.get('stock_symbol')
+            }
+
+            if data.get('funding_usd', 0) != 0:
+                defaults['funding_usd'] = data.get('funding_usd')
+                defaults['rate'] = data.get('rate')
+
+            _funding = data.get('funding', 0)
+            if _funding != 0:
+                defaults['funding'] = data.get('funding')
+
             crunchbase, created = Crunchbase.objects.update_or_create(
                 crunchbase_url=data['crunchbase_url'],
-                defaults={
-                    'name': data.get('name'),
-                    'funding': data.get('funding'),
-                    'website': data.get('website'),
-                    'funding_usd': data.get('funding_usd'),
-                    'rate': data.get('rate'),
-                    'logo': data.get('logo'),
-                    'founders': data.get('founders', []),
-                    'similar_companies': data.get('similar_companies', []),
-                    'description': data.get('description'),
-                    'long_description': data.get('long_description'),
-                    'acquired': data.get('acquired'),
-                    'industries': industries,
-                    'founded': data.get('founded'),
-                    'lastfunding': data.get('lastfunding'),
-                    'stocksymbol': data.get('stock_symbol')
-
-                }
+                defaults=defaults
             )
             print("Created:", crunchbase, created, data)
 
