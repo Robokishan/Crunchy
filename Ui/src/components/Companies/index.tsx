@@ -33,6 +33,8 @@ import { Pending } from "../Pending";
 type UserApiResponse = {
   results: Array<CompayDetail>;
   count: number;
+  next?: string;
+  previous?: string;
 };
 
 export const CompanyDetails = () => {
@@ -56,9 +58,9 @@ export const CompanyDetails = () => {
   const { data, fetchNextPage, isError, isFetching, isLoading } =
     useInfiniteQuery<UserApiResponse>({
       queryKey: ["table-data", columnFilters, globalFilter, sorting],
-      queryFn: async ({ pageParam }) => {
+      queryFn: async ({ pageParam = 1 }) => {
         const url = new URL("/public/comp", getBaseURL());
-        url.searchParams.set("page", `${(pageParam as number) ?? 1}`);
+        url.searchParams.set("page", `${pageParam}`);
         url.searchParams.set("filters", JSON.stringify(columnFilters ?? []));
         url.searchParams.set("search", (globalFilter as string) ?? null);
         url.searchParams.set("sorting", JSON.stringify(sorting ?? []));
@@ -68,7 +70,9 @@ export const CompanyDetails = () => {
         return data;
       },
       initialPageParam: 1,
-      getNextPageParam: (_lastGroup, groups) => groups.length,
+      getNextPageParam: (_lastGroup, groups) => {
+        return !!_lastGroup.next ? groups.length + 1 : undefined;
+      },
       refetchOnWindowFocus: false,
     });
 
