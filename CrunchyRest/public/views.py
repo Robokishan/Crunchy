@@ -45,8 +45,9 @@ class CompaniesListView(generics.ListAPIView):
                     filter_conditions &= Q(
                         description__icontains=filter["value"])
                 elif filter["id"] == "industries":
-                    filter_conditions &= Q(
-                        industries__icontains=filter["value"])
+                    industries = filter["value"]
+                    for industry in industries:
+                        filter_conditions &= Q(industries__icontains=industry)
                 elif filter["id"] == "lastfunding":
                     filter_conditions &= Q(
                         lastfunding__icontains=filter["value"])
@@ -171,6 +172,27 @@ class SettingsList(generics.ListAPIView):
         InterestedIndustries.objects.update_or_create(
             key="industry", defaults={"industries": industries})
         return Response("success")
+
+
+class IndustryList(generics.ListAPIView):
+
+    def get_queryset(self):
+
+        queryset = Crunchbase.objects.values_list(
+            'industries', flat=True).distinct()
+
+        industries_list = []
+        for industries in queryset:
+            if isinstance(industries, list):
+                industries_list.extend(industries)
+            else:
+                industries_list.append(industries)
+
+        industries_list = sorted(set(industries_list))
+        return industries_list
+
+    def list(self, request, *args, **kwargs):
+        return Response(self.get_queryset())
 
 
 @api_view(['GET'])
