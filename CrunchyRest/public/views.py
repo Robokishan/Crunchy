@@ -12,8 +12,7 @@ from rest_framework import serializers
 from rabbitmq.apps import RabbitMQManager
 from pymongo import MongoClient
 from bson.codec_options import CodecOptions
-from django.conf import settings
-import inspect
+import regex as re
 from django.core.paginator import Paginator as DjangoPaginator
 from django.utils.functional import cached_property
 
@@ -65,7 +64,7 @@ class CompaniesListView(generics.ListAPIView):
                     industries = filter["value"]
                     for industry in industries:
                         mongo_query.append({
-                            'industries': {'$regex': industry, '$options': 'i'}
+                            'industries': {'$regex': f'^{re.escape(industry)}', '$options': 'i'}
                         })
                 elif filter["id"] == "lastfunding":
                     mongo_query.append({
@@ -219,7 +218,6 @@ class IndustryList(generics.ListAPIView):
                 root_filter['$and'] = and_filter
         queryset = Crunchbase.objects.mongo_with_options(
             CodecOptions(document_class=dict)).distinct("industries", root_filter)
-
         industries_list = []
         for industries in queryset:
             if isinstance(industries, list):
