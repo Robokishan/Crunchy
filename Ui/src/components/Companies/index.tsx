@@ -37,7 +37,7 @@ type UserApiResponse = {
   previous?: string;
 };
 
-export const CompanyDetails = () => {
+export const CompanyDetails = ({ industries }: { industries: string[] }) => {
   const tableContainerRef = useRef<HTMLDivElement>(null); //we can get access to the underlying TableContainer element and react to its scroll events
   const rowVirtualizerInstanceRef =
     useRef<MRT_RowVirtualizer<HTMLDivElement, HTMLTableRowElement>>(null);
@@ -236,6 +236,8 @@ export const CompanyDetails = () => {
       {
         accessorKey: "industries",
         header: "Industries",
+        filterVariant: "multi-select",
+        filterSelectOptions: industries,
         size: 200,
         Cell: ({ cell }) => {
           const _f = cell.row.original.industries;
