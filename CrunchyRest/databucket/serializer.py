@@ -30,3 +30,14 @@ class CrunchbaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Crunchbase
         fields = '__all__'
+
+
+class CompanySerializer(serializers.ModelSerializer):
+    founders = ListField()
+    similar_companies = ListField()
+    industries = ListField()
+    _id = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = Crunchbase
+        fields = '__all__'
