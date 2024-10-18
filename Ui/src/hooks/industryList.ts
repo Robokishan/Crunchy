@@ -21,7 +21,7 @@ const useIndustryList = (
   const { data: industries, isLoading } = useQuery<string[], Error>({
     queryKey: ["industries", selectedIndustry],
     queryFn: () => fetchIndustries(selectedIndustry ?? []),
-    enabled: selectedIndustry && selectedIndustry.length > 0,
+    enabled: Boolean(selectedIndustry && selectedIndustry.length > 0),
   });
 
   useEffect(() => {
