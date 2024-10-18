@@ -26,7 +26,6 @@ export default async function handler(
         acquired,
       } = req.body;
       try {
-        console.log("Request: ", req.body);
         let _database_id = databaseId;
         if (!databaseId) {
           _database_id = process.env.NOTION_DATABASE_ID;

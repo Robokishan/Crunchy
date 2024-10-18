@@ -63,8 +63,6 @@ export const CompanyDetails = ({ industries }: { industries: string[] }) => {
 
   const filterIndustry = useIndustryList(industries, selectedIndustry);
 
-  console.log("filterIndustry:", filterIndustry.length);
-
   const { data, fetchNextPage, isError, isFetching, isLoading } =
     useInfiniteQuery<UserApiResponse>({
       queryKey: ["table-data", columnFilters, globalFilter, sorting],

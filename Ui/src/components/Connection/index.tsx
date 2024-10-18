@@ -47,7 +47,6 @@ export const Connection = () => {
       value: string;
       targetType: String;
     }) => {
-      console.log({ sourceType, value, targetType });
       if (sourceType === "" || value == "" || targetType === "") return;
       const urlPath = DEFAULT_URL + `?${sourceType}=${value}&key=${targetType}`;
       setSearchUrl(urlPath);
@@ -73,48 +72,52 @@ export const Connection = () => {
       <hr className="my-3 h-px border-0 bg-gray-200 " />
 
       <Grid container spacing={2}>
-
-      <Grid item xs={8} md={4}>
-      <Grid container spacing={2} alignItems="center">
-
-      <FormControl variant="standard" sx={{ m: 1, minWidth: 120 }}>
-        <TypeSelector
-          label="Source"
-          labelId="source-Label-Type"
-          selectId="source-select"
-          handleChange={(e :any) => setSourceType(e.target.value)}
-        />
-      </FormControl>
-      <FormControl variant="standard" sx={{ m: 1, minWidth: 120 }}>
-        <input
-          type="text"
-          placeholder="Search"
-          onChange={(e) => setSourceValue(e.target.value)}
-          className="rounded-l border border-gray-300 bg-gray-200 px-4 py-2 focus:bg-white focus:outline-none"
-        />
-      </FormControl>
-      <FormControl variant="standard" sx={{ m: 1, minWidth: 120 }}>
-        <TypeSelector
-          label="Target"
-          labelId="target-Label-Type"
-          selectId="target-select"
-          handleChange={(e :any) => setTargetType(e.target.value)}
-        />
-      </FormControl>
-      <button
-        onClick={() => onSearch({ sourceType, targetType, value: sourceValue })}
-      >
-        <ArrowTopRightOnSquareIcon className="h-5 w-5 fill-gray-800" />
-      </button>
-      </Grid>
-      </Grid>
-      <Grid item xs={8} md={4}>
-        <TextareaAutosize maxRows={100} style={{
-          width: "100vh",
-          background: "#353B43",
-          color: "#F9F9F9",
-          fontFamily: "monospace",
-        }} value={JSON.stringify(fetchedData, null, 2)} />
+        <Grid item xs={8} md={4}>
+          <Grid container spacing={2} alignItems="center">
+            <FormControl variant="standard" sx={{ m: 1, minWidth: 120 }}>
+              <TypeSelector
+                label="Source"
+                labelId="source-Label-Type"
+                selectId="source-select"
+                handleChange={(e: any) => setSourceType(e.target.value)}
+              />
+            </FormControl>
+            <FormControl variant="standard" sx={{ m: 1, minWidth: 120 }}>
+              <input
+                type="text"
+                placeholder="Search"
+                onChange={(e) => setSourceValue(e.target.value)}
+                className="rounded-l border border-gray-300 bg-gray-200 px-4 py-2 focus:bg-white focus:outline-none"
+              />
+            </FormControl>
+            <FormControl variant="standard" sx={{ m: 1, minWidth: 120 }}>
+              <TypeSelector
+                label="Target"
+                labelId="target-Label-Type"
+                selectId="target-select"
+                handleChange={(e: any) => setTargetType(e.target.value)}
+              />
+            </FormControl>
+            <button
+              onClick={() =>
+                onSearch({ sourceType, targetType, value: sourceValue })
+              }
+            >
+              <ArrowTopRightOnSquareIcon className="h-5 w-5 fill-gray-800" />
+            </button>
+          </Grid>
+        </Grid>
+        <Grid item xs={8} md={4}>
+          <TextareaAutosize
+            maxRows={100}
+            style={{
+              width: "100vh",
+              background: "#353B43",
+              color: "#F9F9F9",
+              fontFamily: "monospace",
+            }}
+            value={JSON.stringify(fetchedData, null, 2)}
+          />
         </Grid>
       </Grid>
     </div>

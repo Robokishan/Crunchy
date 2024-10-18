@@ -16,7 +16,6 @@ export interface MappingArg {
 }
 
 export const mapToNotion = (databaseId: string, mapingData: MappingArg) => {
-  console.log("Mapping data", mapingData);
   const {
     iconUrl,
     website,
@@ -291,8 +290,6 @@ export const mapToNotion = (databaseId: string, mapingData: MappingArg) => {
     },
     properties: properties,
   };
-
-  console.log("Notion payload", JSON.stringify(payload));
 
   return payload;
 };

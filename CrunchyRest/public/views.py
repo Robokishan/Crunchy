@@ -213,15 +213,12 @@ class IndustryList(generics.ListAPIView):
         if len(selected) > 0:
             and_filter = []
             for item in selected:
-                print("item:", item)
                 and_filter.append(
                     {'industries': item})
             if len(and_filter) > 0:
                 root_filter['$and'] = and_filter
         queryset = Crunchbase.objects.mongo_with_options(
             CodecOptions(document_class=dict)).distinct("industries", root_filter)
-
-        print("root_filter:", root_filter)
 
         industries_list = []
         for industries in queryset:

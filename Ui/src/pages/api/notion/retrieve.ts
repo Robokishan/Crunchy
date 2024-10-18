@@ -29,7 +29,7 @@ export default async function handler(
       res.status(405).end(`Method ${method} Not Allowed`);
     }
   } catch (error) {
-    console.log(error);
+    console.error(error);
     showError(res);
   }
 }
