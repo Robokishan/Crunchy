@@ -24,6 +24,8 @@ class Crunchbase(models.Model):
     lastfunding = models.TextField()
     stocksymbol = models.TextField()
 
+    objects = models.DjongoManager()
+
 
 class InterestedIndustries(models.Model):
     _id = models.ObjectIdField()

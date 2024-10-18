@@ -1,7 +1,7 @@
 from rest_framework.decorators import api_view
 from rest_framework import generics
 from rest_framework.response import Response
-from databucket.serializer import CrunchbaseSerializer
+from databucket.serializer import CompanySerializer
 from databucket.models import Crunchbase
 from databucket.models import InterestedIndustries
 from django.db.models import Q
@@ -10,78 +10,109 @@ from rest_framework import pagination
 import json
 from rest_framework import serializers
 from rabbitmq.apps import RabbitMQManager
+from pymongo import MongoClient
+from bson.codec_options import CodecOptions
+from django.conf import settings
+import inspect
+from django.core.paginator import Paginator as DjangoPaginator
+from django.utils.functional import cached_property
+
+
+class CustomDjangoPaginator(DjangoPaginator):
+    @cached_property
+    def count(self):
+        return self.object_list.count()
 
 
 class CompanyPagination(pagination.PageNumberPagination):
     page_size = 100
     max_page_size = 300
 
+    django_paginator_class = CustomDjangoPaginator
+
 
 class CompaniesListView(generics.ListAPIView):
-    serializer_class = CrunchbaseSerializer
+    serializer_class = CompanySerializer
     pagination_class = CompanyPagination
 
     def get_queryset(self):
-        queryset = Crunchbase.objects.order_by("-updated_at")
 
-        filter_conditions = Q()
         filters = self.request.GET.get('filters', None)
         sorting = self.request.GET.get('sorting', None)
         globalFilter = self.request.GET.get('search', None)
 
-        if globalFilter != 'null' and globalFilter != None:
-            queryset = queryset.filter(
-                Q(name__icontains=globalFilter) |
-                Q(description__icontains=globalFilter) |
-                Q(founders__icontains=globalFilter)
-            )
+        root_query = {}
+        mongo_query = []
+        if globalFilter != 'null' and globalFilter is not None:
+            mongo_query = [
+                {'name': {'$regex': globalFilter, '$options': 'i'}},
+                {'description': {'$regex': globalFilter, '$options': 'i'}},
+                {'founders': {'$regex': globalFilter, '$options': 'i'}}
+            ]
+            root_query['$or'] = mongo_query
         elif filters:
             filters = json.loads(filters)
-            # filters: [{"id":"name","value":"level ai"}]
             for filter in filters:
                 if filter["id"] == "name":
-                    filter_conditions &= Q(name__icontains=filter["value"])
+                    mongo_query.append({
+                        'name': {'$regex': filter["value"], '$options': 'i'}
+                    })
                 elif filter["id"] == "description":
-                    filter_conditions &= Q(
-                        description__icontains=filter["value"])
+                    mongo_query.append({
+                        'description': {'$regex': filter["value"], '$options': 'i'}
+                    })
                 elif filter["id"] == "industries":
                     industries = filter["value"]
                     for industry in industries:
-                        filter_conditions &= Q(industries__icontains=industry)
+                        mongo_query.append({
+                            'industries': {'$regex': industry, '$options': 'i'}
+                        })
                 elif filter["id"] == "lastfunding":
-                    filter_conditions &= Q(
-                        lastfunding__icontains=filter["value"])
+                    mongo_query.append({
+                        'lastfunding': {'$regex': filter["value"], '$options': 'i'}
+                    })
                 elif filter["id"] == "website":
-                    filter_conditions &= Q(website__icontains=filter["value"])
+                    mongo_query.append({
+                        'website': {'$regex': filter["value"], '$options': 'i'}
+                    })
+                elif filter["id"] == "crunchbase_url":
+                    mongo_query.append({
+                        'crunchbase_url': filter["value"]
+                    })
                 elif filter["id"] == "funding_usd":
                     try:
                         filter["value"] = [
                             int(v) if v is not None and v != "" else None for v in filter["value"]]
-                        # value will be ["10",null] first element is gte and second element is lte
-                        if filter["value"][0] != None:
-                            filter_conditions &= Q(
-                                funding_usd__gte=filter["value"][0])
-                        if filter["value"][1] != None:
-                            filter_conditions &= Q(
-                                funding_usd__lte=filter["value"][1])
+                        if filter["value"][0] is not None:
+                            mongo_query.append({
+                                'funding_usd': {'$gte': filter["value"][0]}
+                            })
+
+                        if filter["value"][1] is not None:
+                            mongo_query.append({
+                                'funding_usd': {'$lte': filter["value"][1]}
+                            })
                     except ValueError as e:
                         print(e)
+            if len(mongo_query) > 0:
+                root_query['$and'] = mongo_query
 
-            if len(filters) > 0:
-                queryset = queryset.filter(filter_conditions)
-
+        sort = []
         if sorting:
             sorting = json.loads(sorting)
-            sort_fields = []
-            for sort in sorting:
-                field = sort["id"]
-                if sort.get("desc", False):  # Check if 'desc' key exists and is True
-                    field = f"-{field}"
-                sort_fields.append(field)
-            if len(sorting) > 0:
-                queryset = queryset.order_by(*sort_fields)
+            for sort_field in sorting:
+                field = sort_field["id"]
+                direction = -1 if sort_field.get("desc", False) else 1
+                sort.append((field, direction))
 
-        return queryset
+        options = CodecOptions(document_class=dict)
+        cursor = Crunchbase.objects.mongo_with_options(codec_options=options).find(
+            root_query)
+
+        if len(sort) > 0:
+            cursor = cursor.sort(sort)
+
+        return cursor
 
 
 @api_view(['GET'])
