@@ -29,6 +29,7 @@ import { getBaseURL } from "../../utils/baseUrl";
 import CreateCrawl from "../CreateCrawl";
 import ExportToNotion from "../ExportNotionModal";
 import { Pending } from "../Pending";
+import useIndustryList from "~/hooks/industryList";
 
 type UserApiResponse = {
   results: Array<CompayDetail>;
@@ -54,6 +55,15 @@ export const CompanyDetails = ({ industries }: { industries: string[] }) => {
       desc: true,
     },
   ]);
+
+  const selectedIndustry = useMemo(
+    () => columnFilters.find((f) => f.id === "industries")?.value as string[],
+    [columnFilters]
+  );
+
+  const filterIndustry = useIndustryList(industries, selectedIndustry);
+
+  console.log("filterIndustry:", filterIndustry.length);
 
   const { data, fetchNextPage, isError, isFetching, isLoading } =
     useInfiniteQuery<UserApiResponse>({
@@ -109,16 +119,6 @@ export const CompanyDetails = ({ industries }: { industries: string[] }) => {
     },
     [fetchNextPage, isFetching, totalFetched, totalDBRowCount]
   );
-
-  //scroll to top of table when sorting or filters change
-  useEffect(() => {
-    //scroll to the top of the table when the sorting changes
-    try {
-      rowVirtualizerInstanceRef.current?.scrollToIndex?.(0);
-    } catch (error) {
-      console.error(error);
-    }
-  }, [sorting, columnFilters, globalFilter]);
 
   //scroll to top of table when sorting or filters change
   useEffect(() => {
@@ -237,7 +237,7 @@ export const CompanyDetails = ({ industries }: { industries: string[] }) => {
         accessorKey: "industries",
         header: "Industries",
         filterVariant: "multi-select",
-        filterSelectOptions: industries,
+        filterSelectOptions: filterIndustry,
         size: 200,
         Cell: ({ cell }) => {
           const _f = cell.row.original.industries;
@@ -378,7 +378,7 @@ export const CompanyDetails = ({ industries }: { industries: string[] }) => {
         size: 500,
       },
     ],
-    []
+    [filterIndustry]
   );
 
   const table = useMaterialReactTable({

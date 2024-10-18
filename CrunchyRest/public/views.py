@@ -207,10 +207,21 @@ class SettingsList(generics.ListAPIView):
 
 class IndustryList(generics.ListAPIView):
 
-    def get_queryset(self):
+    def get_queryset(self, selected: list):
 
-        queryset = Crunchbase.objects.values_list(
-            'industries', flat=True).distinct()
+        root_filter = {}
+        if len(selected) > 0:
+            and_filter = []
+            for item in selected:
+                print("item:", item)
+                and_filter.append(
+                    {'industries': item})
+            if len(and_filter) > 0:
+                root_filter['$and'] = and_filter
+        queryset = Crunchbase.objects.mongo_with_options(
+            CodecOptions(document_class=dict)).distinct("industries", root_filter)
+
+        print("root_filter:", root_filter)
 
         industries_list = []
         for industries in queryset:
@@ -223,10 +234,12 @@ class IndustryList(generics.ListAPIView):
         return industries_list
 
     def list(self, request, *args, **kwargs):
-        return Response(self.get_queryset())
+        selected = request.GET.getlist('selected[]', [])
+
+        return Response(self.get_queryset(selected))
 
 
-@api_view(['GET'])
+@ api_view(['GET'])
 def PendingInQueue(request):
     priorityPending_messages = RabbitMQManager.get_pending_in_priority_queue()
     normalPending_messages = RabbitMQManager.get_pending_in_normal_queue()
