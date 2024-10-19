@@ -14,6 +14,8 @@ class Command(BaseCommand):
         subscriber.connect()
         subscriber.run()
 
+    # TODO: dirty code to be refactored
+
     def get_currency_in_usd(self, funding):
         try:
             currencyConvert = CurrencyConverter()
