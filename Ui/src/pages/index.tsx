@@ -4,10 +4,13 @@ import { CompanyDetails } from "~/components/Companies";
 import crunchyClient from "~/utils/crunchyClient";
 import { GetServerSideProps } from "next";
 import type { InferGetServerSidePropsType } from "next";
+import { Industry } from "~/hooks/industryList";
 
 export const getServerSideProps = async () => {
   try {
-    const { data: industries } = await crunchyClient.get("/public/industries");
+    const { data: industries } = await crunchyClient.get<Industry[]>(
+      "/public/industries"
+    );
     return {
       props: {
         industries,

@@ -29,7 +29,7 @@ import { getBaseURL } from "../../utils/baseUrl";
 import CreateCrawl from "../CreateCrawl";
 import ExportToNotion from "../ExportNotionModal";
 import { Pending } from "../Pending";
-import useIndustryList from "~/hooks/industryList";
+import useIndustryList, { Industry } from "~/hooks/industryList";
 
 type UserApiResponse = {
   results: Array<CompayDetail>;
@@ -38,7 +38,7 @@ type UserApiResponse = {
   previous?: string;
 };
 
-export const CompanyDetails = ({ industries }: { industries: string[] }) => {
+export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
   const tableContainerRef = useRef<HTMLDivElement>(null); //we can get access to the underlying TableContainer element and react to its scroll events
   const rowVirtualizerInstanceRef =
     useRef<MRT_RowVirtualizer<HTMLDivElement, HTMLTableRowElement>>(null);
