@@ -4,7 +4,11 @@ from .contextmanager import Neo4jDBSessionManager
 from neo4j.debug import watch
 import sys
 
-manager = Neo4jDBSessionManager(settings.NEO4J_RESOURCE_URI, settings.NEO4J_USERNAME, settings.NEO4J_PASSWORD, False)
+
+manager = None
+if settings.NEO4J_RESOURCE_URI is not None:
+    manager = Neo4jDBSessionManager(settings.NEO4J_RESOURCE_URI, settings.NEO4J_USERNAME, settings.NEO4J_PASSWORD, False)
+
 
 # watch("neo4j", out=sys.stdout) #Output debug to stdout 
 
