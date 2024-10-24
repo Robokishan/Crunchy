@@ -63,7 +63,7 @@ class CompaniesListView(generics.ListAPIView):
                     industries = filter["value"]
                     for industry in industries:
                         mongo_query.append({
-                            'industries': {'$regex': f'^{re.escape(industry)}', '$options': 'i'}
+                            'industries': {'$regex': f'^{re.escape(industry)}$', '$options': 'i'}
                         })
                 elif filter["id"] == "lastfunding":
                     mongo_query.append({
@@ -214,7 +214,7 @@ class IndustryList(generics.ListAPIView):
             for industry in selected:
                 if industry != '':
                     all_filter.append(
-                        {'$elemMatch': {'$regex': f"^{re.escape(industry)}", '$options': "i"}}),
+                        {'$elemMatch': {'$regex': f"^{re.escape(industry)}$", '$options': "i"}}),
 
         filter = [
             {
