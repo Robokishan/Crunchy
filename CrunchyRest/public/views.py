@@ -10,7 +10,6 @@ from rest_framework import pagination
 import json
 from rest_framework import serializers
 from rabbitmq.apps import RabbitMQManager
-from pymongo import MongoClient
 from bson.codec_options import CodecOptions
 import regex as re
 from django.core.paginator import Paginator as DjangoPaginator
@@ -208,25 +207,71 @@ class IndustryList(generics.ListAPIView):
 
     def get_queryset(self, selected: list):
 
-        root_filter = {}
-        if len(selected) > 0:
-            and_filter = []
-            for item in selected:
-                and_filter.append(
-                    {'industries': item})
-            if len(and_filter) > 0:
-                root_filter['$and'] = and_filter
-        queryset = Crunchbase.objects.mongo_with_options(
-            CodecOptions(document_class=dict)).distinct("industries", root_filter)
-        industries_list = []
-        for industries in queryset:
-            if isinstance(industries, list):
-                industries_list.extend(industries)
-            else:
-                industries_list.append(industries)
+        all_filter = []
 
-        industries_list = sorted(set(industries_list))
-        return industries_list
+        # check if selected is array
+        if isinstance(selected, list) and len(selected) > 0:
+            for industry in selected:
+                if industry != '':
+                    all_filter.append(
+                        {'$elemMatch': {'$regex': f"^{re.escape(industry)}", '$options': "i"}}),
+
+        filter = [
+            {
+                '$unwind': "$industries"
+            },
+            {
+                '$group': {
+                    '_id': "$industries",
+                    'count': {'$sum': 1}
+                }
+            },
+            {
+                '$sort': {
+                    '_id': 1
+                }
+            },
+            {
+                '$project': {
+                    '_id': 0,
+                    'industry': "$_id",
+                    'count': "$count"
+                }
+            }
+        ]
+
+        if len(all_filter) > 0:
+            filter = [
+                {
+                    '$match': {
+                        'industries': {'$all': all_filter}
+                    }
+                },
+                {
+                    '$unwind': "$industries"
+                },
+                {
+                    '$group': {
+                        '_id': "$industries",
+                        'count': {'$sum': 1}
+                    }
+                },
+                {
+                    '$sort': {
+                        'count': -1
+                    }
+                },
+                {
+                    '$project': {
+                        '_id': 0,
+                        'industry': "$_id",
+                        'count': "$count"
+                    }
+                }
+            ]
+
+        industries = Crunchbase.objects.mongo_aggregate(filter)
+        return list(industries)
 
     def list(self, request, *args, **kwargs):
         selected = request.GET.getlist('selected[]', [])

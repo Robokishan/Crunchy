@@ -1,11 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { DropdownOption } from "material-react-table";
+import { useEffect, useMemo, useState } from "react";
 import crunchyClient from "~/utils/crunchyClient";
+
+export type Industry = {
+  industry: string;
+  count: number;
+};
 
 const fetchIndustries = async (
   selectedIndustries: string[]
-): Promise<string[]> => {
-  const response = await crunchyClient.get<string[]>(`/public/industries`, {
+): Promise<Industry[]> => {
+  const response = await crunchyClient.get<Industry[]>(`/public/industries`, {
     params: {
       selected: selectedIndustries,
     },
@@ -14,11 +20,11 @@ const fetchIndustries = async (
 };
 
 const useIndustryList = (
-  defaultIndustry: string[],
+  defaultIndustry: Industry[],
   selectedIndustry?: string[]
-) => {
-  const [industry, setIndustry] = useState<string[]>([]);
-  const { data: industries, isLoading } = useQuery<string[], Error>({
+): DropdownOption[] => {
+  const [industry, setIndustry] = useState<Industry[]>([]);
+  const { data: industries, isLoading } = useQuery<Industry[], Error>({
     queryKey: ["industries", selectedIndustry],
     queryFn: () => fetchIndustries(selectedIndustry ?? []),
     enabled: Boolean(selectedIndustry && selectedIndustry.length > 0),
@@ -38,7 +44,14 @@ const useIndustryList = (
     }
   }, [selectedIndustry, defaultIndustry, industries, isLoading]);
 
-  return industry;
+  const industryOptions = useMemo(() => {
+    return industry.map((industry) => ({
+      label: `${industry.industry} (${industry.count})`,
+      value: industry.industry,
+    }));
+  }, [industry]);
+
+  return industryOptions;
 };
 
 export default useIndustryList;
