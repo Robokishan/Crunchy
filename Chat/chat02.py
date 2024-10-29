@@ -9,6 +9,7 @@ from langchain_core.output_parsers import StrOutputParser
 import gradio as gr
 from decouple import config as DefaultConfig
 from decouple import Config, RepositoryEnv
+from langchain_cohere.llms import Cohere
 
 DEV_ENV_FILE = "../.env.dev"
 PROD_ENV_FILE = "../.env.prod"
@@ -32,13 +33,18 @@ model = "llama3"
 NEO4J_RESOURCE_URI = config('NEO4J_RESOURCE_URI', cast=str)
 NEO4J_USERNAME = config('NEO4J_USERNAME', cast=str)
 NEO4J_PASSWORD = config('NEO4J_PASSWORD', cast=str)
+OLLAMA_BASE_URL = config('OLLAMA_BASE_URL', cast=str)
 
 
 graph = Neo4jGraph(enhanced_schema=True, url=NEO4J_RESOURCE_URI,
                    username=NEO4J_USERNAME, password=NEO4J_PASSWORD)
 graph.refresh_schema()
 schema = graph.schema
-llm = Ollama(model=model)
+
+# llm = Ollama(model=model, base_url=OLLAMA_BASE_URL)
+llm = Cohere(cohere_api_key=config('COHERE_API_KEY', cast=str))
+
+
 CYPHER_GENERATION_PROMPT = PromptTemplate(
     input_variables=["schema", "question"], template=CYPHER_GENERATION_TEMPLATE
 )
@@ -65,7 +71,7 @@ def extract_cypher(text: str) -> str:
 
 
 def get_answer(question):
-
+    logger.info("Question: {}", question)
     args = {
         "question": question,
         "schema": schema,
@@ -73,7 +79,6 @@ def get_answer(question):
 
     answer = chain.invoke(args)
     generated_cypher = extract_cypher(answer)
-    logger.info("Question: {}", question)
     logger.debug("Generated cypher:")
     logger.debug(generated_cypher)
     try:

@@ -5,3 +5,4 @@ gradio==4.43.0
 neo4j==5.10.0
 python-decouple==3.8
 loguru==0.7.2
+langchain-cohere==0.2.4

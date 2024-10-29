@@ -90,6 +90,18 @@ services:
       - ${ENV_FILE}
     depends_on:
       - api
+  
+  aichat:
+    container_name: aichat
+    image: "index.docker.io/robokishan/crunchy:aichat"
+    restart: always
+    ports:
+      - "5052:7860"
+    env_file:
+      - ${ENV_FILE}
+    depends_on:
+      - neo4j
+      - ollama-service
 
   rabbitmq:
     container_name: queue
@@ -156,6 +168,44 @@ services:
     restart: always
     volumes:
       - '/var/run/docker.sock:/var/run/docker.sock'
+  neo4j:
+    container_name: graphdb
+    image: "neo4j:5.23.0-community-bullseye"
+    restart: always
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      - NEO4J_AUTH=neo4j/Abcd@1234
+      - NEO4J_apoc_export_file_enabled=true
+      - NEO4J_apoc_import_file_enabled=true
+      - NEO4J_apoc_import_file_use__neo4j__config=true
+      - NEO4J_PLUGINS=["apoc"]
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - neo4j_import:/var/lib/neo4j/import
+      - neo4j_plugins:/plugins
+
+  ollama-service:
+    container_name: ollama_pi_local
+    image: ollama/ollama:latest
+    volumes:
+      - ./ollama:/root/.ollama
+    ports:
+      - 11434:11434
+  
+  download-model:
+    image: curlimages/curl:8.6.0
+    entrypoint: ["curl", "ollama-service:11434/api/pull", "-d", '{"name": "llama3"}']
+    # You can use other models
+    #entrypoint: ["curl", "ollama-service:11434/api/pull", "-d", '{"name": "phi"}']
+    #entrypoint: ["curl", "ollama-service:11434/api/pull", "-d", '{"name": "orca-mini:7b"}']
+    depends_on:
+      ollama-service:
+        condition: service_started
+
+    
   # mongodb:
   #   image: "mongo:5.0"
   #   restart: always
@@ -166,3 +216,7 @@ volumes:
   rabbitmq_data:
   rabbitmq_log:
   portainer_data:
+  neo4j_data:
+  neo4j_logs:
+  neo4j_import:
+  neo4j_plugins:
