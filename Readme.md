@@ -4,7 +4,7 @@
 This is Crunchy my experiment over some fancy technologies for learning purpose. Crunchy is scrapper for crunchbase.com. 
 
 ## Background story
-I usually surf a lot on crunchbase for looking into which companies are doing what and follow progress. But it wasn't very convenient experience because of Bloatware ui.  Web isn't that good any more.web should be Simple. Just like geo hotz's blog. so I got an idea to create clone frontend for crunchbase. but that comes with chaos. I wrap up my slives. and created a simple scrapper for crunchbase pushed data over kafka and made queue out of rabbitmq. and here it is crunchy a simple scrapper for rabbitmq
+I usually surf a lot on crunchbase for looking into which companies are doing what and follow progress. But it wasn't very convenient experience because of Bloatware ui.  Web isn't that good any more.web should be Simple. Just like geo hotz's blog. so I got an idea to create clone frontend for crunchbase. but that comes with chaos. I wrap up my slives. and created a simple scrapper for crunchbase pushed data over kafka and made queue out of rabbitmq. and here it is crunchy a simple scrapper with rabbitmq
 
 
 ## Pending Work
