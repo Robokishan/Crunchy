@@ -40,8 +40,12 @@ graph = Neo4jGraph(enhanced_schema=True, url=NEO4J_RESOURCE_URI,
                    username=NEO4J_USERNAME, password=NEO4J_PASSWORD)
 graph.refresh_schema()
 schema = graph.schema
+# don't use any direction in schema, it improves the performance
+schema = schema.replace("->", "-")
 logger.info("Schema: {}", schema)
 
+
+# llama performs well on this task, but depends on the machine this is being run
 # llm = Ollama(model=model, base_url=OLLAMA_BASE_URL)
 llm = Cohere(cohere_api_key=config('COHERE_API_KEY', cast=str))
 
