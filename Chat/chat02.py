@@ -40,6 +40,7 @@ graph = Neo4jGraph(enhanced_schema=True, url=NEO4J_RESOURCE_URI,
                    username=NEO4J_USERNAME, password=NEO4J_PASSWORD)
 graph.refresh_schema()
 schema = graph.schema
+logger.info("Schema: {}", schema)
 
 # llm = Ollama(model=model, base_url=OLLAMA_BASE_URL)
 llm = Cohere(cohere_api_key=config('COHERE_API_KEY', cast=str))
