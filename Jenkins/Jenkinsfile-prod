@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     parameters {
-        choice(name: 'SERVICE_NAME', choices: ['all', 'crawler', 'api', 'ui'], description: 'Select service to build')
+        choice(name: 'SERVICE_NAME', choices: ['all', 'crawler', 'api', 'ui', 'chat'], description: 'Select service to build')
     }
 
     environment {
@@ -29,6 +29,11 @@ pipeline {
               sh 'docker build -t robokishan/crunchy:ui -f Dockerfile .'
             }
           }
+          if (serviceName == 'chat' || serviceName == 'all') {
+            dir('Chat') {
+              sh 'docker build -t robokishan/crunchy:aichat -f Dockerfile .'
+            }
+          }
         }
       }
         }
@@ -46,6 +51,9 @@ pipeline {
           }
           if (serviceName == 'ui' || serviceName == 'all') {
             sh 'docker image push robokishan/crunchy:ui'
+          }
+          if (serviceName == 'chat' || serviceName == 'all') {
+            sh 'docker image push robokishan/crunchy:aichat'
           }
         }
       }

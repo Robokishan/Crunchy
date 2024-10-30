@@ -101,7 +101,7 @@ services:
       - ${ENV_FILE}
     depends_on:
       - neo4j
-      - ollama-service
+      # - ollama-service
 
   rabbitmq:
     container_name: queue
@@ -187,23 +187,23 @@ services:
       - neo4j_import:/var/lib/neo4j/import
       - neo4j_plugins:/plugins
 
-  ollama-service:
-    container_name: ollama_pi_local
-    image: ollama/ollama:latest
-    volumes:
-      - ./ollama:/root/.ollama
-    ports:
-      - 11434:11434
+  # ollama-service:
+  #   container_name: ollama_pi_local
+  #   image: ollama/ollama:latest
+  #   volumes:
+  #     - ./ollama:/root/.ollama
+  #   ports:
+  #     - 11434:11434
   
-  download-model:
-    image: curlimages/curl:8.6.0
-    entrypoint: ["curl", "ollama-service:11434/api/pull", "-d", '{"name": "llama3"}']
-    # You can use other models
-    #entrypoint: ["curl", "ollama-service:11434/api/pull", "-d", '{"name": "phi"}']
-    #entrypoint: ["curl", "ollama-service:11434/api/pull", "-d", '{"name": "orca-mini:7b"}']
-    depends_on:
-      ollama-service:
-        condition: service_started
+  # download-model:
+  #   image: curlimages/curl:8.6.0
+  #   entrypoint: ["curl", "ollama-service:11434/api/pull", "-d", '{"name": "llama3"}']
+  #   # You can use other models
+  #   #entrypoint: ["curl", "ollama-service:11434/api/pull", "-d", '{"name": "phi"}']
+  #   #entrypoint: ["curl", "ollama-service:11434/api/pull", "-d", '{"name": "orca-mini:7b"}']
+  #   depends_on:
+  #     ollama-service:
+  #       condition: service_started
 
     
   # mongodb:
