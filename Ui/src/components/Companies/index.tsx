@@ -1,6 +1,13 @@
 import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/solid";
 import LoadingButton from "@mui/lab/LoadingButton";
-import { Button, Typography } from "@mui/material";
+import {
+  Button,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  Typography,
+} from "@mui/material";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { differenceInMinutes, format, formatDistance } from "date-fns";
 import {
@@ -38,6 +45,8 @@ type UserApiResponse = {
   previous?: string;
 };
 
+type IndustryOptionSortBy = "industryCount" | "alphabetical" | "default";
+
 export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
   const tableContainerRef = useRef<HTMLDivElement>(null); //we can get access to the underlying TableContainer element and react to its scroll events
   const rowVirtualizerInstanceRef =
@@ -55,13 +64,19 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
       desc: true,
     },
   ]);
+  const [industryOptionSortBy, setIndustryOptionSortBy] =
+    useState<IndustryOptionSortBy>("default");
 
   const selectedIndustry = useMemo(
     () => columnFilters.find((f) => f.id === "industries")?.value as string[],
     [columnFilters]
   );
 
-  const filterIndustry = useIndustryList(industries, selectedIndustry);
+  const filterIndustry = useIndustryList(
+    industries,
+    selectedIndustry,
+    industryOptionSortBy
+  );
 
   const { data, fetchNextPage, isError, isFetching, isLoading } =
     useInfiniteQuery<UserApiResponse>({
@@ -514,6 +529,22 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
         >
           Create Crawl
         </Button>
+        <FormControl sx={{ minWidth: 120 }}>
+          <InputLabel id="industry-sort-by-label">Industry Sort By</InputLabel>
+          <Select
+            labelId="industry-sort-by-label"
+            id="industry-sort-by-select"
+            value={industryOptionSortBy}
+            label="Industry Sort By"
+            onChange={(e) =>
+              setIndustryOptionSortBy(e.target.value as IndustryOptionSortBy)
+            }
+          >
+            <MenuItem value="default">Default</MenuItem>
+            <MenuItem value="alphabetical">Alphabetical</MenuItem>
+            <MenuItem value="industryCount">Industry Count</MenuItem>
+          </Select>
+        </FormControl>
         <span className="relative flex h-3 w-3">
           {isLoading && (
             <>

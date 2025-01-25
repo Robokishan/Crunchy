@@ -205,7 +205,7 @@ class SettingsList(generics.ListAPIView):
 
 class IndustryList(generics.ListAPIView):
 
-    def get_queryset(self, selected: list):
+    def get_queryset(self, selected: list, sortBy: str = 'default'):
 
         all_filter = []
 
@@ -270,13 +270,25 @@ class IndustryList(generics.ListAPIView):
                 }
             ]
 
+            for i, f in enumerate(filter):
+                if '$sort' in f:
+                    if sortBy == 'industryCount':
+                        filter[i]['$sort'] = {
+                            'count': -1
+                        }
+                    elif sortBy == 'alphabetical':
+                        filter[i]['$sort'] = {
+                            '_id': 1
+                        }
+
         industries = Crunchbase.objects.mongo_aggregate(filter)
         return list(industries)
 
     def list(self, request, *args, **kwargs):
         selected = request.GET.getlist('selected[]', [])
+        sortBy = request.GET.get('sortBy', 'default')
 
-        return Response(self.get_queryset(selected))
+        return Response(self.get_queryset(selected, sortBy))
 
 
 @ api_view(['GET'])

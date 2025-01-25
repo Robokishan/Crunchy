@@ -9,11 +9,13 @@ export type Industry = {
 };
 
 const fetchIndustries = async (
-  selectedIndustries: string[]
+  selectedIndustries: string[],
+  sortBy?: string
 ): Promise<Industry[]> => {
   const response = await crunchyClient.get<Industry[]>(`/public/industries`, {
     params: {
       selected: selectedIndustries,
+      sortBy: sortBy,
     },
   });
   return response.data;
@@ -21,12 +23,13 @@ const fetchIndustries = async (
 
 const useIndustryList = (
   defaultIndustry: Industry[],
-  selectedIndustry?: string[]
+  selectedIndustry?: string[],
+  industrySortBy?: string
 ): DropdownOption[] => {
   const [industry, setIndustry] = useState<Industry[]>([]);
   const { data: industries, isLoading } = useQuery<Industry[], Error>({
-    queryKey: ["industries", selectedIndustry],
-    queryFn: () => fetchIndustries(selectedIndustry ?? []),
+    queryKey: ["industries", selectedIndustry, industrySortBy],
+    queryFn: () => fetchIndustries(selectedIndustry ?? [], industrySortBy),
     enabled: Boolean(selectedIndustry && selectedIndustry.length > 0),
   });
 
