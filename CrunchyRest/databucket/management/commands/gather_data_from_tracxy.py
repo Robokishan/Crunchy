@@ -5,7 +5,7 @@ Saves to TracxnRaw, merges into Crunchbase. Discovers Crunchbase URL (DuckDuckGo
 and pushes to crawl queue only when entry_point != "crunchbase". When we discover
 a CB URL from Tracxn we create/update Crunchbase from Tracxn data so merge works
 when scrape starts from Tracxn; the CB consumer will update that record when the
-CB page is scraped. Pushing competitor_urls from Tracxn is currently commented out.
+CB page is scraped. Competitor/alternate URLs from Tracxn are pushed to the crawl queue.
 
 Usage:
     python manage.py gather_data_from_tracxy
@@ -204,14 +204,14 @@ class Command(BaseCommand):
                     )
                     print(f"  - Created/updated Crunchbase from Tracxn (will be updated when CB page is scraped)")
 
-            # Competitor push disabled until Tracxn competitor extraction is working.
-            # for tracxn_url in data.get("competitor_urls", []) or []:
-            #     try:
-            #         TracxnRaw.objects.get(tracxn_url=tracxn_url)
-            #         print(f"  - Competitor already in TracxnRaw, skipping: {tracxn_url}")
-            #     except TracxnRaw.DoesNotExist:
-            #         print(f"  - Pushing competitor to queue: {tracxn_url}")
-            #         RabbitMQManager.publish_message({"url": tracxn_url, "entry_point": "tracxn"})
+            # Push competitor/alternate URLs to crawl queue (skip if already in TracxnRaw)
+            for tracxn_url in data.get("competitor_urls", []) or []:
+                try:
+                    TracxnRaw.objects.get(tracxn_url=tracxn_url)
+                    print(f"  - Competitor already in TracxnRaw, skipping: {tracxn_url}")
+                except TracxnRaw.DoesNotExist:
+                    print(f"  - Pushing competitor to queue: {tracxn_url}")
+                    RabbitMQManager.publish_message({"url": tracxn_url, "entry_point": "tracxn"})
 
             return True
 

@@ -20,6 +20,13 @@ import regex as re
 # list of all extractors add if any new extractor come for tracxn
 extractors = [CompanyDetails, DetailsExtract, HighlightsExtract]
 
+# Valid Tracxn company URL: /d/companies/<slug>/__<id> (optional trailing path like /funding-and-investors)
+# Used to validate URLs and to extract canonical base for deduplication.
+_TRACXN_COMPANY_BASE_RE = re.compile(
+    r"^(https?://(?:www\.)?tracxn\.com)?(/d/companies/[^/]+/__[^/?#]+)",
+    re.IGNORECASE,
+)
+
 # ---------------------------------------------------------------------------
 # Competitors / Alternates: EDIT ONLY THESE XPATHS if the page structure changes.
 # Each must return @href values for links to Tracxn company pages (/d/companies/...).
@@ -120,26 +127,50 @@ class TracxnDataParser:
 
     @staticmethod
     def _normalize_tracxn_company_url(href: str) -> str | None:
-        """Turn an href into a full Tracxn company URL; return None if not a company link."""
-        if not href or '/d/companies/' not in href:
+        """Turn an href into a full Tracxn company URL; return None if not a valid company link."""
+        if not href or "/d/companies/" not in href:
             return None
-        href = href.strip().split('#')[0].split('?')[0]
-        if not href.startswith('http'):
-            href = f'https://tracxn.com{href}' if href.startswith('/') else f'https://tracxn.com/{href}'
+        # Exclude buggy links (e.g. mailto: or unrelated Tracxn paths)
+        href_lower = href.strip().lower()
+        if "mailto:" in href_lower or href_lower.startswith("mailto:"):
+            return None
+        href = href.strip().split("#")[0].split("?")[0]
+        if not href.startswith("http"):
+            href = f"https://tracxn.com{href}" if href.startswith("/") else f"https://tracxn.com/{href}"
+        # Must match canonical company path: /d/companies/<slug>/__<id>
+        if not _TRACXN_COMPANY_BASE_RE.search(href):
+            return None
         return href
 
     @staticmethod
+    def _tracxn_company_canonical_url(url: str) -> str | None:
+        """Return canonical company URL (base only: no /funding-and-investors etc.) for deduplication."""
+        if not url:
+            return None
+        m = _TRACXN_COMPANY_BASE_RE.search(url)
+        if not m:
+            return None
+        prefix, path = m.group(1), m.group(2)
+        base = (prefix or "https://tracxn.com") + path
+        return base
+
+    @staticmethod
     def _tracxn_company_urls_from_hrefs(hrefs: list, current_page_url: str) -> list:
-        """Normalize hrefs to full URLs, dedupe, and exclude current page. Returns list (maybe empty)."""
-        seen = set()
-        current_normalized = TracxnDataParser._normalize_tracxn_company_url(current_page_url)
+        """Normalize hrefs to full URLs, dedupe by company (canonical URL), exclude current page and invalid URLs. Returns list (maybe empty)."""
+        seen_canonical = set()
+        current_canonical = TracxnDataParser._tracxn_company_canonical_url(
+            TracxnDataParser._normalize_tracxn_company_url(current_page_url)
+        )
         result = []
         for h in hrefs:
             url = TracxnDataParser._normalize_tracxn_company_url(h)
-            if not url or url in seen or url == current_normalized:
+            if not url:
                 continue
-            seen.add(url)
-            result.append(url)
+            canonical = TracxnDataParser._tracxn_company_canonical_url(url)
+            if not canonical or canonical in seen_canonical or canonical == current_canonical:
+                continue
+            seen_canonical.add(canonical)
+            result.append(canonical)
         return result
 
     @staticmethod
