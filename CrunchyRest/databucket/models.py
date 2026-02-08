@@ -26,12 +26,15 @@ class Crunchbase(models.Model):
     stocksymbol = models.TextField()
     # NEW: normalized domain for entity matching
     normalized_domain = models.TextField(null=True, blank=True)
+    # True when a TracxnRaw with same normalized_domain exists (for analytics: False = CB-only)
+    merged_with_tracxn = models.BooleanField(default=False)
 
     objects = models.DjongoManager()
 
     class Meta:
         indexes = [
             models.Index(fields=['normalized_domain']),
+            models.Index(fields=['merged_with_tracxn']),
         ]
 
 
@@ -59,6 +62,8 @@ class TracxnRaw(models.Model):
     founded = models.TextField(null=True, blank=True)
     hq_location = models.TextField(null=True, blank=True)
     matched = models.BooleanField(default=False)
+    # True when a Crunchbase with same normalized_domain exists (for analytics: False = Tracxn-only)
+    merged_with_crunchbase = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -68,6 +73,7 @@ class TracxnRaw(models.Model):
         indexes = [
             models.Index(fields=['normalized_domain']),
             models.Index(fields=['matched']),
+            models.Index(fields=['merged_with_crunchbase']),
         ]
 
 

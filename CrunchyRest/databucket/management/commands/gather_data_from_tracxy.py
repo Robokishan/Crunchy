@@ -106,6 +106,12 @@ class Command(BaseCommand):
                         processed_round['amount_usd'] = result[0]
                 processed_rounds.append(processed_round)
 
+            # merged_with_crunchbase: True if a Crunchbase with same domain exists (for analytics)
+            has_cb = (
+                Crunchbase.objects.filter(normalized_domain=normalized).exists()
+                if normalized
+                else False
+            )
             defaults = {
                 'name': data.get('name', ''),
                 'website': website,
@@ -119,6 +125,7 @@ class Command(BaseCommand):
                 'founded': data.get('founded', ''),
                 'hq_location': data.get('hq_location', ''),
                 'matched': False,
+                'merged_with_crunchbase': has_cb,
             }
 
             tracxn_record, created = TracxnRaw.objects.update_or_create(
@@ -146,6 +153,8 @@ class Command(BaseCommand):
                     'funding': funding_total or '',
                     'funding_usd': funding_total_usd,
                     'rate': rate,
+                    'merged_with_tracxn': True,
+                    'similar_companies': data.get('competitor_urls', []) or [],
                 }
                 if website:
                     update_kw['website'] = website
@@ -161,15 +170,18 @@ class Command(BaseCommand):
                         parts.append('founded')
                     if 'rate' in update_kw:
                         parts.append('rate')
+                    if 'merged_with_tracxn' in update_kw:
+                        parts.append('merged_with_tracxn')
+                    if update_kw.get('similar_companies'):
+                        parts.append('similar_companies')
                     print(f"  - [Merge] Updated {updated} Crunchbase record(s): {', '.join(parts)}")
                 else:
                     print(f"  - [Merge] Updated 0 rows (no Crunchbase record with normalized_domain={repr(normalized)})")
             else:
                 print(f"  - [Merge] Skipped: no normalized_domain (website={repr(website)})")
 
-            # Cross-discovery: find Crunchbase URL and push only when this is NOT the first loop (entry_point=crunchbase).
-            # When entry_point=crunchbase we're on the Tracxn page discovered from CB - do NOT discover CB here or we'd create an infinite loop.
-            # When entry_point=tracxn we discover CB, push to queue, and create/update Crunchbase from Tracxn so merge works when starting from Tracxn.
+            # Cross-discovery: find Crunchbase URL and push to queue only when this is NOT the first loop (entry_point=crunchbase).
+            # Do NOT create a Crunchbase row here: databucket_crunchbase should only have rows when we actually scraped Crunchbase (or when CB + Tracxn are merged). When CB is scraped later, the CB consumer will create the row.
             if data.get("entry_point") != "crunchbase" and normalized:
                 crunchbase_url = discover_crunchbase_url(
                     data.get('name', ''),
@@ -179,30 +191,6 @@ class Command(BaseCommand):
                     crunchbase_url = crunchbase_url.strip().rstrip('/')
                     print(f"  - Discovered Crunchbase URL, pushing to queue: {crunchbase_url}")
                     RabbitMQManager.publish_message({"url": crunchbase_url, "entry_point": "tracxn"})
-                    # Create or update Crunchbase from Tracxn so the company exists when we started from Tracxn; CB consumer will update this record when the CB page is scraped (same key: no trailing slash).
-                    cb_defaults = {
-                        'name': data.get('name', ''),
-                        'website': (website or crunchbase_url or '').rstrip('/'),  # Crunchbase.website required; no trailing slash
-                        'normalized_domain': normalized,
-                        'funding': funding_total or '',
-                        'funding_usd': funding_total_usd,
-                        'rate': rate,
-                        'logo': data.get('logo', '') or '',
-                        'founders': data.get('founders', []) or [],
-                        'similar_companies': [],
-                        'description': data.get('description', '') or '',
-                        'long_description': '',
-                        'acquired': '',
-                        'industries': data.get('industries', []) or [],
-                        'founded': (data.get('founded') or '').strip() or '',
-                        'lastfunding': '',
-                        'stocksymbol': '',
-                    }
-                    Crunchbase.objects.update_or_create(
-                        crunchbase_url=crunchbase_url,
-                        defaults=cb_defaults,
-                    )
-                    print(f"  - Created/updated Crunchbase from Tracxn (will be updated when CB page is scraped)")
 
             # Push competitor/alternate URLs to crawl queue (skip if already in TracxnRaw)
             for tracxn_url in data.get("competitor_urls", []) or []:

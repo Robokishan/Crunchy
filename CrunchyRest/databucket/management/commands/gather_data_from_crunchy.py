@@ -98,7 +98,6 @@ class Command(BaseCommand):
                 "website": website,
                 "logo": data.get("logo"),
                 "founders": data.get("founders", []),
-                "similar_companies": data.get("similar_companies", []),
                 "description": data.get("description"),
                 "long_description": data.get("long_description"),
                 "acquired": data.get("acquired"),
@@ -107,13 +106,15 @@ class Command(BaseCommand):
                 "stocksymbol": data.get("stock_symbol"),
                 "normalized_domain": normalized,
             }
-
             # Funding and founded: never from CB (not reliable). Use Tracxn when available.
             tracxn = (
                 TracxnRaw.objects.filter(normalized_domain=normalized).first()
                 if normalized
                 else None
             )
+            # similar_companies: from CB only when no Tracxn; when Tracxn exists we keep existing value (set by Tracxn merge = competitor URLs)
+            if not tracxn:
+                defaults["similar_companies"] = data.get("similar_companies", [])
             if tracxn:
                 defaults["funding"] = (tracxn.funding_total or "").strip() or ""
                 defaults["funding_usd"] = getattr(tracxn, "funding_total_usd", 0) or 0
@@ -125,11 +126,13 @@ class Command(BaseCommand):
                 else:
                     defaults["rate"] = 1
                 defaults["founded"] = (tracxn.founded or "").strip() or ""
+                defaults["merged_with_tracxn"] = True
             else:
                 defaults["funding"] = ""
                 defaults["funding_usd"] = 0
                 defaults["rate"] = 1
                 defaults["founded"] = ""
+                defaults["merged_with_tracxn"] = False
 
             # Normalize crunchbase_url (no trailing slash) so we match the same record as Tracxn consumer
             crunchbase_url = (data.get("crunchbase_url") or "").strip().rstrip("/")
