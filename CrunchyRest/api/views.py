@@ -14,10 +14,14 @@ def createCrawl(request):
     try:
         if serializer.is_valid():
             urls = serializer.validated_data['url']
-            for message in urls:
+            for url in urls:
+                entry_point = "crunchbase" if "crunchbase.com" in url else "tracxn"
+                message = {"url": url, "entry_point": entry_point}
                 print('URL Sent to RabbitMQ', message)
-                RabbitMQManager.publish_priority_message(message)
-                # RabbitMQManager.publish_message(message)
+                if entry_point == "crunchbase":
+                    RabbitMQManager.publish_crunchbase_crawl(message)
+                else:
+                    RabbitMQManager.publish_tracxn_crawl(message)
             return Response("Sent")
         else:
             return Response(serializer.errors, status=400)

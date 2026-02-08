@@ -32,12 +32,27 @@ services:
   #   environment:
   #     - IP_CHANGE_SECONDS=60
 
-  crawler:
-    container_name: crawler
+  crawler-crunchy:
+    container_name: crawler-crunchy
     image: "crunchy/crawler"
     build:
       context: ./CrunchyCrawler
       dockerfile: Dockerfile
+    command: bash -c "python3 ./go-crunchy-cb.py"
+    restart: always
+    env_file:
+      - ${ENV_FILE}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  crawler-tracxn:
+    container_name: crawler-tracxn
+    image: "crunchy/crawler"
+    build:
+      context: ./CrunchyCrawler
+      dockerfile: Dockerfile
+    command: bash -c "python3 ./go-crunchy-tracxn.py"
     restart: always
     env_file:
       - ${ENV_FILE}
@@ -74,13 +89,27 @@ services:
     depends_on:
       - api
 
-  databucket:
-    container_name: bucket
+  databucket-crunchy:
+    container_name: bucket-crunchy
     image: "crunchy/rest"
     build:
       context: ./CrunchyRest
       dockerfile: Dockerfile
-    command: bash -c "python manage.py gather_data_from_kafka"
+    command: bash -c "python manage.py gather_data_from_crunchy"
+    restart: always
+    env_file:
+      - ${ENV_FILE}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  databucket-tracxn:
+    container_name: bucket-tracxn
+    image: "crunchy/rest"
+    build:
+      context: ./CrunchyRest
+      dockerfile: Dockerfile
+    command: bash -c "python manage.py gather_data_from_tracxy"
     restart: always
     env_file:
       - ${ENV_FILE}

@@ -1,42 +1,103 @@
-from confluent_kafka import Producer
 import json
+import pika
 from CrunchyCrawler.rabbitmq.connection import get_channels
 from scrapy.exceptions import DropItem
 from loguru import logger
 
 
-class KafkaPipeline:
+class DatabucketPipeline:
+    """
+    RabbitMQ pipeline that routes scraped items to databucket queues by source.
+
+    - Items with source='crunchbase' go to crunchbase_databucket_queue
+    - Items with source='tracxn' go to tracxn_databucket_queue
+
+    Same behaviour as previous Kafka pipeline, using RabbitMQ only.
+    """
 
     @classmethod
     def from_crawler(cls, crawler):
         settings = crawler.settings
+        exchange = settings.get('RB_DATABUCKET_EXCHANGE', 'databucket_exchange')
+        crunchbase_rk = settings.get('RB_DATABUCKET_CRUNCHBASE_RK', 'crunchbase_databucket')
+        tracxn_rk = settings.get('RB_DATABUCKET_TRACXN_RK', 'tracxn_databucket')
+        return cls(
+            exchange=exchange,
+            crunchbase_routing_key=crunchbase_rk,
+            tracxn_routing_key=tracxn_rk,
+            rabbitmq_url=settings.get('RABBITMQ_URL'),
+        )
 
-        producer_conf = {
-            'bootstrap.servers': settings.get('KAFKA_SERVER'),
-            'sasl.mechanism': settings.get('KAFKA_SASL_MECHANISM'),
-            'security.protocol': 'SASL_SSL',
-            'sasl.username': settings.get('KAFKA_USERNAME'),
-            'sasl.password': settings.get('KAFKA_PASSWORD')
-        }
+    def __init__(self, exchange, crunchbase_routing_key, tracxn_routing_key, rabbitmq_url):
+        self.exchange = exchange
+        self.crunchbase_routing_key = crunchbase_routing_key
+        self.tracxn_routing_key = tracxn_routing_key
+        self.rabbitmq_url = rabbitmq_url
+        self._connection = None
+        self._channel = None
 
-        topic = settings.get('KAFKA_CRUNCHBASE_DATABUCKET_TOPIC')
+    def open_spider(self, spider):
+        if not self.rabbitmq_url:
+            logger.warning("RABBITMQ_URL not set; DatabucketPipeline will not publish")
+            return
+        try:
+            parameters = pika.URLParameters(self.rabbitmq_url + '?heartbeat=600')
+            self._connection = pika.BlockingConnection(parameters)
+            self._channel = self._connection.channel()
+            self._channel.exchange_declare(
+                exchange=self.exchange,
+                exchange_type='direct',
+                durable=True,
+            )
+            logger.info(f"DatabucketPipeline connected to RabbitMQ, exchange={self.exchange}")
+        except Exception as e:
+            logger.error(f"DatabucketPipeline failed to connect to RabbitMQ: {e}")
+            self._channel = None
+            self._connection = None
 
-        # Initialize the pipeline with the desired setting
-        return cls(producer_conf, topic)
-
-    def __init__(self, producer_conf, topic):
-        # Create a Kafka producer
-        self.producer = Producer(producer_conf, logger=logger)
-        self.topic = topic
+    def close_spider(self, spider):
+        if self._channel and self._channel.is_open:
+            try:
+                self._channel.close()
+            except Exception as e:
+                logger.debug(f"DatabucketPipeline channel close: {e}")
+        if self._connection and self._connection.is_open:
+            try:
+                self._connection.close()
+            except Exception as e:
+                logger.debug(f"DatabucketPipeline connection close: {e}")
+        self._channel = None
+        self._connection = None
 
     def process_item(self, item, spider):
-        # Serialize the item as JSON
-        logger.info(f"Sent to Bucket: {item}")
-        json_data = json.dumps(dict(item))
+        if self._channel is None or not self._channel.is_open:
+            logger.warning("DatabucketPipeline: no channel, skipping publish")
+            return item
 
-        # Send the JSON data to the Kafka topic
-        self.producer.produce(self.topic, value=json_data)
-        self.producer.flush()
+        source = item.get('source', 'crunchbase')
+        if source == 'tracxn':
+            routing_key = self.tracxn_routing_key
+        else:
+            routing_key = self.crunchbase_routing_key
+
+        # Don't publish internal/retry items
+        if source in ('retry', 'unknown'):
+            return item
+
+        try:
+            json_data = json.dumps(dict(item))
+            self._channel.basic_publish(
+                exchange=self.exchange,
+                routing_key=routing_key,
+                body=json_data,
+                properties=pika.BasicProperties(
+                    delivery_mode=pika.spec.PERSISTENT_DELIVERY_MODE,
+                    content_type='application/json',
+                ),
+            )
+            logger.info(f"Sent to databucket ({source} -> {routing_key}): {item.get('name', item.get('url', '?'))}")
+        except Exception as e:
+            logger.error(f"DatabucketPipeline publish failed: {e}")
         return item
 
 

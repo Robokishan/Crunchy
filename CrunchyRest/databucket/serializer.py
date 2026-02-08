@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Crunchbase
+from .models import Crunchbase, Company
 import json
 
 
@@ -33,11 +33,15 @@ class CrunchbaseSerializer(serializers.ModelSerializer):
 
 
 class CompanySerializer(serializers.ModelSerializer):
+    """Serializer for the unified Company model."""
     founders = ListField()
     similar_companies = ListField()
     industries = ListField()
+    funding_rounds = ListField()
+    sources = ListField()
+    source_priority = serializers.JSONField()
     _id = serializers.CharField(read_only=True)
 
     class Meta:
-        model = Crunchbase
+        model = Company
         fields = '__all__'

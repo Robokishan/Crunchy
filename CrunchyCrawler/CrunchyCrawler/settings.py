@@ -50,10 +50,14 @@ SPIDER_MIDDLEWARES = {
 }
 
 
+# Use stealth-enabled Playwright handler to reduce Cloudflare detection
 DOWNLOAD_HANDLERS = {
-    "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
-    "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+    "http": "scrapy_playwright_stealth.handler.ScrapyPlaywrightStealthDownloadHandler",
+    "https": "scrapy_playwright_stealth.handler.ScrapyPlaywrightStealthDownloadHandler",
 }
+
+# Enable stealth mode for Playwright
+PLAYWRIGHT_USE_STEALTH = True
 
 DOWNLOADER_MIDDLEWARES = {
     'CrunchyCrawler.middlewares.CrunchyUserAgentMiddleware': 545,
@@ -66,26 +70,30 @@ LOG_LEVEL = "INFO"
 # LOG_LEVEL = "ERROR"
 
 
-# KAFKA SETTINGS
-KAFKA_USERNAME = config('KAFKA_USERNAME', cast=str)
-KAFKA_PASSWORD = config('KAFKA_PASSWORD', cast=str)
-KAFKA_SERVER = config('KAFKA_SERVER', cast=str)
-KAFKA_SASL_MECHANISM = config('KAFKA_SASL_MECHANISM', cast=str)
-KAFKA_GROUP_ID = config('KAFKA_GROUP_ID', cast=str)
-KAFKA_CRUNCHBASE_DATABUCKET_TOPIC = config(
-    'KAFKA_CRUNCHBASE_DATABUCKET_TOPIC', cast=str)
-
-
-# rabbitMQ
+# rabbitMQ (crawl queues + databucket queues)
 RABBITMQ_URL = config('RABBITMQ_URL', cast=str)
-RB_MAIN_EXCHANGE = config('RABBIT_MQ_MAIN_EXCHANGE', cast=str)
-RB_MAIN_ROUTING_KEY = config('RABBIT_MQ_MAIN_ROUTING_KEY', cast=str)
-RB_MAIN_QUEUE = config('RABBIT_MQ_MAIN_QUEUE', cast=str)
+# Option B parallel execution: set to 'crunchbase' or 'tracxn' to bind this process to one queue only (run two processes for parallel CB + Tracxn). Unset = both queues, Tracxn first.
+CRUNCHY_CRAWL_QUEUE = os.environ.get('CRUNCHY_CRAWL_QUEUE')  # 'crunchbase' | 'tracxn' | None
 
-RABBIT_MQ_PRIORITY_EXCHANGE = config('RABBIT_MQ_PRIORITY_EXCHANGE', cast=str)
-RABBIT_MQ_PRIORITY_ROUTING_KEY = config(
-    'RABBIT_MQ_PRIORITY_ROUTING_KEY', cast=str)
-RABBIT_MQ_PRIORITY_QUEUE = config('RABBIT_MQ_PRIORITY_QUEUE', cast=str)
+# Decoupled crawl queues: Crunchbase and Tracxn each have their own queue
+RB_CRAWL_EXCHANGE = config('RB_CRAWL_EXCHANGE', cast=str, default='crawl_exchange')
+RB_CRUNCHBASE_CRAWL_QUEUE = config('RB_CRUNCHBASE_CRAWL_QUEUE', cast=str, default='crawl_crunchbase_queue')
+RB_CRUNCHBASE_CRAWL_RK = config('RB_CRUNCHBASE_CRAWL_RK', cast=str, default='crawl_crunchbase')
+RB_TRACXN_CRAWL_QUEUE = config('RB_TRACXN_CRAWL_QUEUE', cast=str, default='crawl_tracxn_queue')
+RB_TRACXN_CRAWL_RK = config('RB_TRACXN_CRAWL_RK', cast=str, default='crawl_tracxn')
+
+# Databucket exchange: scraped items (Crunchbase/Tracxn) go to these queues for Django consumers
+RB_DATABUCKET_EXCHANGE = config('RB_DATABUCKET_EXCHANGE', cast=str, default='databucket_exchange')
+RB_DATABUCKET_CRUNCHBASE_RK = config('RB_DATABUCKET_CRUNCHBASE_RK', cast=str, default='crunchbase_databucket')
+RB_DATABUCKET_TRACXN_RK = config('RB_DATABUCKET_TRACXN_RK', cast=str, default='tracxn_databucket')
+
+# FlareSolverr settings for Cloudflare bypass (free, open-source)
+FLARESOLVERR_URL = config('FLARESOLVERR_URL', cast=str, default='http://localhost:8191/v1')
+CLOUDFLARE_SOLVE_TIMEOUT = 60000  # milliseconds to wait for FlareSolverr solution
+
+# Dump raw scraped HTML + parsed item to <company_name>.json for testing extractors (test_crunchy_extractor.py, test_tracxy_extractor.py)
+DUMP_RAW_SCRAPED_DATA = config('DUMP_RAW_SCRAPED_DATA', default=False, cast=bool)
+DUMP_RAW_SCRAPED_DIR = config('DUMP_RAW_SCRAPED_DIR', default='./raw_scraped_dumps')
 
 LOG_ENABLED = False
 
@@ -94,7 +102,7 @@ PLAYWRIGHT_BROWSER_TYPE = "firefox"
 # PLAYWRIGHT_PROCESS_REQUEST_HEADERS = None
 
 PLAYWRIGHT_LAUNCH_OPTIONS = {
-    "headless": True,
+    "headless": False,
     "timeout": 50 * 1000,  # 20 seconds
 }
 
@@ -105,7 +113,11 @@ PLAYWRIGHT_LAUNCH_OPTIONS = {
 # ROBOTSTXT_OBEY = True
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
-CONCURRENT_REQUESTS = 2
+# Option B (single queue per process): one request at a time so we don't bombard Crunchbase/Tracxn; parallel is 1 CB + 1 Tracxn across the two processes.
+if CRUNCHY_CRAWL_QUEUE:
+    CONCURRENT_REQUESTS = 1
+else:
+    CONCURRENT_REQUESTS = 2
 
 # Configure a delay for requests for the same website (default: 0)
 # See https://docs.scrapy.org/en/latest/topics/settings.html#download-delay
@@ -150,7 +162,7 @@ DEFAULT_REQUEST_HEADERS = {
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
     "CrunchyCrawler.pipelines.RabbitMQPipeline": 300,
-    "CrunchyCrawler.pipelines.KafkaPipeline": 301,
+    "CrunchyCrawler.pipelines.DatabucketPipeline": 301,
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)

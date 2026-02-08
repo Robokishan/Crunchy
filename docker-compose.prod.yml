@@ -32,10 +32,10 @@ services:
   #   environment:
   #     - IP_CHANGE_SECONDS=60
 
-  crawler:
-    container_name: crawler
+  crawler-crunchy:
+    container_name: crawler-crunchy
     image: "index.docker.io/robokishan/crunchy:crawler"
-    command: bash -c "./wait-for-it.sh rabbitmq:5672 -t 0 -- python3 ./go-crunchy.py"
+    command: bash -c "./wait-for-it.sh rabbitmq:5672 -t 0 -- python3 ./go-crunchy-cb.py"
     restart: always
     env_file:
       - ${ENV_FILE}
@@ -45,10 +45,28 @@ services:
     logging:
       driver: fluentd
       options:
-        fluentd-address: 127.0.0.1:24224  # Address of Fluentd
-        tag: "docker.{{.Name}}"  # Tag for easier identification of logs
-    links: 
-        - rabbitmq
+        fluentd-address: 127.0.0.1:24224
+        tag: "docker.{{.Name}}"
+    links:
+      - rabbitmq
+
+  crawler-tracxn:
+    container_name: crawler-tracxn
+    image: "index.docker.io/robokishan/crunchy:crawler"
+    command: bash -c "./wait-for-it.sh rabbitmq:5672 -t 0 -- python3 ./go-crunchy-tracxn.py"
+    restart: always
+    env_file:
+      - ${ENV_FILE}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 127.0.0.1:24224
+        tag: "docker.{{.Name}}"
+    links:
+      - rabbitmq
 
   api:
     container_name: api
@@ -66,19 +84,41 @@ services:
     links: 
         - rabbitmq
 
-  databucket:
-    container_name: bucket
+  databucket-crunchy:
+    container_name: bucket-crunchy
     image: "index.docker.io/robokishan/crunchy:rest"
-    # command: bash -c "python manage.py gather_data_from_kafka"
-    command: bash -c "./wait-for-it.sh rabbitmq:5672 -t 0 -- python manage.py gather_data_from_kafka"
+    command: bash -c "./wait-for-it.sh rabbitmq:5672 -t 0 -- python manage.py gather_data_from_crunchy"
     restart: always
     env_file:
       - ${ENV_FILE}
     depends_on:
       rabbitmq:
         condition: service_healthy
-    links: 
-        - rabbitmq
+    links:
+      - rabbitmq
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 127.0.0.1:24224
+        tag: "docker.{{.Name}}"
+
+  databucket-tracxn:
+    container_name: bucket-tracxn
+    image: "index.docker.io/robokishan/crunchy:rest"
+    command: bash -c "./wait-for-it.sh rabbitmq:5672 -t 0 -- python manage.py gather_data_from_tracxy"
+    restart: always
+    env_file:
+      - ${ENV_FILE}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    links:
+      - rabbitmq
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 127.0.0.1:24224
+        tag: "docker.{{.Name}}"
 
   ui:
     container_name: ui
@@ -156,7 +196,7 @@ services:
   #     - 'portainer_data:/data'
 
   watchtower:
-    command: 'crawler api ui bucket --interval 3600 --debug --remove-volumes --cleanup --include-restarting'
+    command: 'crawler-crunchy crawler-tracxn api ui bucket-crunchy bucket-tracxn --interval 3600 --debug --remove-volumes --cleanup --include-restarting'
     container_name: watchtower
     environment:
       - REPO_USER=${DOCKER_USERNAME}

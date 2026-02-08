@@ -294,3 +294,5 @@ dist
 .env.prod
 .env.dev
 .env*
+CrunchyCrawler/raw_scraped_dumps
+ca_certificate.pem

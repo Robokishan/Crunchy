@@ -45,7 +45,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     # Django REST framework
-    'kafka',
     'databucket',
     'public',
     'rabbitmq',
@@ -167,27 +166,33 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# KAFKA SETTINGS
-KAFKA_USERNAME = config('KAFKA_USERNAME', cast=str)
-KAFKA_PASSWORD = config('KAFKA_PASSWORD', cast=str)
-KAFKA_SERVER = config('KAFKA_SERVER', cast=str)
-KAFKA_SASL_MECHANISM = config('KAFKA_SASL_MECHANISM', cast=str)
-KAFKA_GROUP_ID = config('KAFKA_GROUP_ID', cast=str)
-KAFKA_CRUNCHBASE_DATABUCKET_TOPIC = config(
-    'KAFKA_CRUNCHBASE_DATABUCKET_TOPIC', cast=str)
-
 # rabbitMQ
 RABBITMQ_URL = config('RABBITMQ_URL', default=None)
-RB_MAIN_EXCHANGE = config('RABBIT_MQ_MAIN_EXCHANGE', cast=str)
-RB_MAIN_ROUTING_KEY = config('RABBIT_MQ_MAIN_ROUTING_KEY', cast=str)
-RB_MAIN_QUEUE = config('RABBIT_MQ_MAIN_QUEUE', cast=str)
+# Decoupled crawl queues (spider consumes from both)
+RB_CRAWL_EXCHANGE = config('RB_CRAWL_EXCHANGE', cast=str, default='crawl_exchange')
+RB_CRUNCHBASE_CRAWL_QUEUE = config('RB_CRUNCHBASE_CRAWL_QUEUE', cast=str, default='crawl_crunchbase_queue')
+RB_CRUNCHBASE_CRAWL_RK = config('RB_CRUNCHBASE_CRAWL_RK', cast=str, default='crawl_crunchbase')
+RB_TRACXN_CRAWL_QUEUE = config('RB_TRACXN_CRAWL_QUEUE', cast=str, default='crawl_tracxn_queue')
+RB_TRACXN_CRAWL_RK = config('RB_TRACXN_CRAWL_RK', cast=str, default='crawl_tracxn')
 
-# priority rabbitmq queue
-RABBIT_MQ_PRIORITY_EXCHANGE = config('RABBIT_MQ_PRIORITY_EXCHANGE', cast=str)
-RABBIT_MQ_PRIORITY_ROUTING_KEY = config(
-    'RABBIT_MQ_PRIORITY_ROUTING_KEY', cast=str)
-RABBIT_MQ_PRIORITY_QUEUE = config('RABBIT_MQ_PRIORITY_QUEUE', cast=str)
+# Databucket queues (scraped items from crawler, consumed by Django)
+RB_DATABUCKET_EXCHANGE = config(
+    'RB_DATABUCKET_EXCHANGE', cast=str, default='databucket_exchange'
+)
+RB_DATABUCKET_CRUNCHBASE_QUEUE = config(
+    'RB_DATABUCKET_CRUNCHBASE_QUEUE', cast=str, default='crunchbase_databucket_queue'
+)
+RB_DATABUCKET_CRUNCHBASE_RK = config(
+    'RB_DATABUCKET_CRUNCHBASE_RK', cast=str, default='crunchbase_databucket'
+)
+RB_DATABUCKET_TRACXN_QUEUE = config(
+    'RB_DATABUCKET_TRACXN_QUEUE', cast=str, default='tracxn_databucket_queue'
+)
+RB_DATABUCKET_TRACXN_RK = config(
+    'RB_DATABUCKET_TRACXN_RK', cast=str, default='tracxn_databucket'
+)
 
 NEO4J_RESOURCE_URI = config('NEO4J_RESOURCE_URI', cast=str)
 NEO4J_USERNAME = config('NEO4J_USERNAME', cast=str)
 NEO4J_PASSWORD = config('NEO4J_PASSWORD', cast=str)
+

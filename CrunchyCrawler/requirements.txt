@@ -1,9 +1,10 @@
 scrapy==2.11.2
 pika==1.3.2
-scrapy-playwright==0.0.41
-confluent-kafka==2.1.1
+scrapy-playwright>=0.0.43
+scrapy-playwright-stealth>=0.1.1
 python-decouple==3.8
 Twisted==22.10.0
 playwright==1.46.0
 loguru==0.7.2
 regex
+requests>=2.31.0
