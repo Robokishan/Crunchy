@@ -125,16 +125,24 @@ class RabbitMQManager:
 
     @classmethod
     def _publish(cls, message):
+        body = message
+        if isinstance(message, dict):
+            body = json.dumps(message)
         cls._channel.basic_publish(
-            exchange=exchange, routing_key=routing_key, body=message, properties=pika.BasicProperties(
-                delivery_mode=pika.spec.PERSISTENT_DELIVERY_MODE
+            exchange=exchange, routing_key=routing_key, body=body, properties=pika.BasicProperties(
+                delivery_mode=pika.spec.PERSISTENT_DELIVERY_MODE,
+                content_type='application/json' if isinstance(message, dict) else None,
             ))
 
     @classmethod
     def _priority_publish(cls, message):
+        body = message
+        if isinstance(message, dict):
+            body = json.dumps(message)
         cls._priority_channel.basic_publish(
-            exchange=priority_exchange, routing_key=priority_routing_key, body=message, properties=pika.BasicProperties(
-                delivery_mode=pika.spec.PERSISTENT_DELIVERY_MODE
+            exchange=priority_exchange, routing_key=priority_routing_key, body=body, properties=pika.BasicProperties(
+                delivery_mode=pika.spec.PERSISTENT_DELIVERY_MODE,
+                content_type='application/json' if isinstance(message, dict) else None,
             ))
 
     @staticmethod

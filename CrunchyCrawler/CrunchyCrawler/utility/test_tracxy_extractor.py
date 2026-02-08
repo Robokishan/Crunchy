@@ -4,8 +4,10 @@ Test Tracxn parser and extractors against saved HTML.
 With DUMP_RAW_SCRAPED_DATA=true, the crawler writes:
   raw_scraped_dumps/<company_name>_tracxy.json
   raw_scraped_dumps/<company_name>_crunchbase.json
-Load a Tracxn dump (e.g. raw_scraped_dumps/<company>_tracxy.json) and use the
-"html" key here to test TracxnDataParser or tracxnExtractor without hitting Tracxn.
+Load a Tracxn dump and use the "html" key here to test TracxnDataParser or
+tracxnExtractor without hitting Tracxn. Competitors/Alternates extraction is
+tested here: after changing XPATH_COMPETITORS_HREF or XPATH_ALTERNATES_HREF in
+TracxnDataParser, re-run this script with a Tracxn dump to verify without re-scraping.
 
 Usage:
   # From a dumped JSON (after scraping with DUMP_RAW_SCRAPED_DATA=true):
@@ -55,10 +57,11 @@ def run_from_dump(dump_path: str) -> dict:
         print(
             f"Warning: dump source is '{source}', expected 'tracxn'. Continuing anyway."
         )
-    return run_on_html(html)
+    page_url = data.get("url") or data.get("parsed_item", {}).get("tracxn_url") or ""
+    return run_on_html(html, page_url=page_url)
 
 
-def run_on_html(html: str) -> dict:
+def run_on_html(html: str, page_url: str = "") -> dict:
     """Run TracxnDataParser and tracxn extractors on the given HTML string."""
     x = Selector(text=html)
 
@@ -75,6 +78,16 @@ def run_on_html(html: str) -> dict:
                 print(f"  + {ext_cls.__name__}: {val}")
         except Exception as e:
             print(f"  {ext_cls.__name__} error: {e}")
+
+    # 3) Competitors/Alternates (same as spider; use page_url to exclude self)
+    competitor_urls = TracxnDataParser.extract_competitors_and_alternates(
+        x, page_url or "https://tracxn.com/"
+    )
+    item["competitor_urls"] = competitor_urls
+    n = len(competitor_urls)
+    print(f"Competitor/alternate URLs ({n}):")
+    for u in competitor_urls:
+        print(f"  {u}")
 
     return item
 
@@ -97,4 +110,4 @@ if __name__ == "__main__":
         </div>
         <h1>The Level - Company Profile</h1>
         """
-        run_on_html(sample_html)
+        run_on_html(sample_html, page_url="https://tracxn.com/")

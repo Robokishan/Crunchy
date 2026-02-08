@@ -16,10 +16,10 @@ DEFAULT_DOWNLOAD_TIMEOUT = 60
 CLOUDFLARE_DOWNLOAD_TIMEOUT = 120
 
 
-def generateRequest(url, delivery_tag, queue="normal", callback=None, previousResult={}):
+def generateRequest(url, delivery_tag, queue="normal", callback=None, previousResult={}, entry_point=None):
     """
     Generate a Scrapy Request with Playwright support.
-    
+
     For Crunchbase URLs, includes extended timeout and page access
     for Cloudflare challenge handling.
     """
@@ -33,6 +33,8 @@ def generateRequest(url, delivery_tag, queue="normal", callback=None, previousRe
             PageMethod("wait_for_load_state", "domcontentloaded"),
         ],
     }
+    if entry_point is not None:
+        meta["entry_point"] = entry_point
 
     # Crunchbase: expand "Read More" under About the Company so we capture full long_description
     if "crunchbase.com" in url:

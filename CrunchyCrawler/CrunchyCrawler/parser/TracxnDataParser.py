@@ -8,6 +8,7 @@ This parser extracts:
 - Funding total
 - Founders
 - Founded date, industries
+- Competitors and alternates (company profile URLs) via configurable XPaths
 """
 
 from scrapy.selector import Selector
@@ -18,6 +19,20 @@ import regex as re
 
 # list of all extractors add if any new extractor come for tracxn
 extractors = [CompanyDetails, DetailsExtract, HighlightsExtract]
+
+# ---------------------------------------------------------------------------
+# Competitors / Alternates: EDIT ONLY THESE XPATHS if the page structure changes.
+# Each must return @href values for links to Tracxn company pages (/d/companies/...).
+# Use browser DevTools to find the right selector, then paste the XPath for href only.
+# ---------------------------------------------------------------------------
+XPATH_COMPETITORS_HREF = (
+    "//*[contains(normalize-space(), 'Competitors')]/following-sibling::*[1]"
+    "//a[contains(@href, '/d/companies/')]/@href"
+)
+XPATH_ALTERNATES_HREF = (
+    "//*[contains(normalize-space(), 'Alternates')]/following-sibling::*[1]"
+    "//a[contains(@href, '/d/companies/')]/@href"
+)
 
 
 def get_url_for_resolution(srcset, resolution):
@@ -92,7 +107,7 @@ class TracxnDataParser:
 
     @staticmethod
     def extract_similar_companies(x: Selector):
-        """Extract similar/competitor company URLs."""
+        """Extract similar/competitor company URLs (page-wide)."""
         similar_companies = x.xpath(
             '//a[contains(@href, "/d/companies/")]/@href').getall()
         result = []
@@ -102,6 +117,51 @@ class TracxnDataParser:
                     url = f'https://tracxn.com{url}'
                 result.append(url)
         return result if result else None
+
+    @staticmethod
+    def _normalize_tracxn_company_url(href: str) -> str | None:
+        """Turn an href into a full Tracxn company URL; return None if not a company link."""
+        if not href or '/d/companies/' not in href:
+            return None
+        href = href.strip().split('#')[0].split('?')[0]
+        if not href.startswith('http'):
+            href = f'https://tracxn.com{href}' if href.startswith('/') else f'https://tracxn.com/{href}'
+        return href
+
+    @staticmethod
+    def _tracxn_company_urls_from_hrefs(hrefs: list, current_page_url: str) -> list:
+        """Normalize hrefs to full URLs, dedupe, and exclude current page. Returns list (maybe empty)."""
+        seen = set()
+        current_normalized = TracxnDataParser._normalize_tracxn_company_url(current_page_url)
+        result = []
+        for h in hrefs:
+            url = TracxnDataParser._normalize_tracxn_company_url(h)
+            if not url or url in seen or url == current_normalized:
+                continue
+            seen.add(url)
+            result.append(url)
+        return result
+
+    @staticmethod
+    def extract_competitors_and_alternates(x: Selector, current_page_url: str) -> list:
+        """
+        Extract Competitors and Alternates as Tracxn company URLs.
+
+        Uses XPATH_COMPETITORS_HREF and XPATH_ALTERNATES_HREF; if those return nothing,
+        falls back to page-wide extract_similar_companies. Normalizes URLs, dedupes,
+        and excludes current_page_url. If the section XPaths don't match your page,
+        edit XPATH_COMPETITORS_HREF and XPATH_ALTERNATES_HREF at the top of this file.
+        """
+        hrefs = []
+        for xpath in (XPATH_COMPETITORS_HREF, XPATH_ALTERNATES_HREF):
+            try:
+                hrefs.extend(x.xpath(xpath).getall() or [])
+            except Exception:
+                pass
+        if not hrefs:
+            fallback = TracxnDataParser.extract_similar_companies(x)
+            hrefs = list(fallback) if fallback else []
+        return TracxnDataParser._tracxn_company_urls_from_hrefs(hrefs, current_page_url)
 
     @staticmethod
     def not_empty(data):
