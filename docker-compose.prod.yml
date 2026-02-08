@@ -69,8 +69,8 @@ services:
   databucket:
     container_name: bucket
     image: "index.docker.io/robokishan/crunchy:rest"
-    # command: bash -c "python manage.py gather_data_from_kafka"
-    command: bash -c "./wait-for-it.sh rabbitmq:5672 -t 0 -- python manage.py gather_data_from_kafka"
+    # command: bash -c "python manage.py gather_data_from_crunchy"
+    command: bash -c "./wait-for-it.sh rabbitmq:5672 -t 0 -- python manage.py gather_data_from_crunchy"
     restart: always
     env_file:
       - ${ENV_FILE}

@@ -80,7 +80,7 @@ services:
     build:
       context: ./CrunchyRest
       dockerfile: Dockerfile
-    command: bash -c "python manage.py gather_data_from_kafka"
+    command: bash -c "python manage.py gather_data_from_crunchy"
     restart: always
     env_file:
       - ${ENV_FILE}

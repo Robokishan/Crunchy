@@ -1,18 +1,38 @@
+"""
+Consume Crunchbase scraped items from RabbitMQ databucket queue.
+
+Saves to Crunchbase collection, pushes similar companies and discovered
+Tracxn URLs to the crawl queue.
+
+Usage:
+    python manage.py gather_data_from_crunchy
+"""
+
 from django.core.management import BaseCommand
+from django.conf import settings
 from rabbitmq.apps import RabbitMQManager
+from rabbitmq.databucket_consumer import run_consumer
 from databucket.models import Crunchbase
 from databucket.models import InterestedIndustries
-from kafka.consumer import Subscriber
+from databucket.discovery import discover_tracxn_url
+from utils.domain import normalize_domain
 import regex as re
 from utils.Currency import CurrencyConverter
 import pycountry
 
 
 class Command(BaseCommand):
+    help = 'Consume Crunchbase data from RabbitMQ databucket queue and save to MongoDB'
+
     def handle(self, *args, **options):
-        subscriber = Subscriber(callback=self.callback)
-        subscriber.connect()
-        subscriber.run()
+        # Ensure RabbitMQ connection exists (for publish_message in callback)
+        RabbitMQManager.connect_to_rabbitmq()
+        run_consumer(
+            queue_name=settings.RB_DATABUCKET_CRUNCHBASE_QUEUE,
+            routing_key=settings.RB_DATABUCKET_CRUNCHBASE_RK,
+            exchange=settings.RB_DATABUCKET_EXCHANGE,
+            callback=self.callback,
+        )
 
     # TODO: dirty code to be refactored
 
@@ -74,9 +94,14 @@ class Command(BaseCommand):
 
             industries = [industry.strip()
                           for industry in data.get('industries', [])]
+
+            # Normalize the website domain for entity matching
+            website = data.get('website')
+            normalized = normalize_domain(website) if website else None
+
             defaults = {
                 'name': data.get('name'),
-                'website': data.get('website'),
+                'website': website,
                 'logo': data.get('logo'),
                 'founders': data.get('founders', []),
                 'similar_companies': data.get('similar_companies', []),
@@ -86,12 +111,13 @@ class Command(BaseCommand):
                 'industries': industries,
                 'founded': data.get('founded'),
                 'lastfunding': data.get('lastfunding'),
-                'stocksymbol': data.get('stock_symbol')
+                'stocksymbol': data.get('stock_symbol'),
+                'normalized_domain': normalized,
             }
 
             if data.get('funding_usd', 0) != 0:
-                defaults['funding_usd'] = data.get('funding_usd')
-                defaults['rate'] = data.get('rate')
+                defaults['funding_usd'] = data['funding_usd']
+                defaults['rate'] = data['rate']
 
             _funding = data.get('funding', 0)
             if _funding != 0:
@@ -103,29 +129,36 @@ class Command(BaseCommand):
             )
             print("Created:", crunchbase, created, data)
 
-            interested_industries = InterestedIndustries.objects.get(
-                key='industry')
+            # Only push similar companies to queue if InterestedIndustries config exists
+            interested_industries = InterestedIndustries.objects.filter(
+                key='industry'
+            ).first()
+            if interested_industries is not None:
+                print("Interested Industries:", interested_industries.industries)
+                send_similar_companies = False
+                for industry in industries:
+                    if industry in interested_industries.industries:
+                        send_similar_companies = True
+                if data.get('similar_companies') and send_similar_companies:
+                    for company in data['similar_companies']:
+                        try:
+                            Crunchbase.objects.get(crunchbase_url=company)
+                            print("Company already found", company)
+                        except Crunchbase.DoesNotExist:
+                            print("sending company back to queue", company)
+                            RabbitMQManager.publish_message(company)
+            else:
+                print("InterestedIndustries (key='industry') not configured; skipping similar-companies queue push")
 
-            print("Interested Industries:", interested_industries.industries)
-
-            send_similar_companies = False
-
-            # if any industries is inside interested industries then print included
-            for industry in industries:
-                if industry in interested_industries.industries:
-                    send_similar_companies = True
-
-            if data.get('similar_companies') and send_similar_companies == True:
-                for company in data['similar_companies']:
-                    try:
-                        isFound = Crunchbase.objects.get(
-                            crunchbase_url=company)
-                        print("Company already found",
-                              isFound, company)
-                    except Exception as e:
-                        # this company didn't found in database
-                        print("sending company back to queue", company)
-                        RabbitMQManager.publish_message(company)
+            # Cross-discovery - find Tracxn URL for this company
+            if normalized:
+                tracxn_url = discover_tracxn_url(
+                    company_name=data.get('name', ''),
+                    domain=normalized
+                )
+                if tracxn_url:
+                    print(f"Discovered Tracxn URL, pushing to queue: {tracxn_url}")
+                    RabbitMQManager.publish_message(tracxn_url)
 
             return True
         except Exception as e:

@@ -50,10 +50,14 @@ SPIDER_MIDDLEWARES = {
 }
 
 
+# Use stealth-enabled Playwright handler to reduce Cloudflare detection
 DOWNLOAD_HANDLERS = {
-    "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
-    "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+    "http": "scrapy_playwright_stealth.handler.ScrapyPlaywrightStealthDownloadHandler",
+    "https": "scrapy_playwright_stealth.handler.ScrapyPlaywrightStealthDownloadHandler",
 }
+
+# Enable stealth mode for Playwright
+PLAYWRIGHT_USE_STEALTH = True
 
 DOWNLOADER_MIDDLEWARES = {
     'CrunchyCrawler.middlewares.CrunchyUserAgentMiddleware': 545,
@@ -66,17 +70,7 @@ LOG_LEVEL = "INFO"
 # LOG_LEVEL = "ERROR"
 
 
-# KAFKA SETTINGS
-KAFKA_USERNAME = config('KAFKA_USERNAME', cast=str)
-KAFKA_PASSWORD = config('KAFKA_PASSWORD', cast=str)
-KAFKA_SERVER = config('KAFKA_SERVER', cast=str)
-KAFKA_SASL_MECHANISM = config('KAFKA_SASL_MECHANISM', cast=str)
-KAFKA_GROUP_ID = config('KAFKA_GROUP_ID', cast=str)
-KAFKA_CRUNCHBASE_DATABUCKET_TOPIC = config(
-    'KAFKA_CRUNCHBASE_DATABUCKET_TOPIC', cast=str)
-
-
-# rabbitMQ
+# rabbitMQ (crawl queues + databucket queues)
 RABBITMQ_URL = config('RABBITMQ_URL', cast=str)
 RB_MAIN_EXCHANGE = config('RABBIT_MQ_MAIN_EXCHANGE', cast=str)
 RB_MAIN_ROUTING_KEY = config('RABBIT_MQ_MAIN_ROUTING_KEY', cast=str)
@@ -87,6 +81,19 @@ RABBIT_MQ_PRIORITY_ROUTING_KEY = config(
     'RABBIT_MQ_PRIORITY_ROUTING_KEY', cast=str)
 RABBIT_MQ_PRIORITY_QUEUE = config('RABBIT_MQ_PRIORITY_QUEUE', cast=str)
 
+# Databucket exchange: scraped items (Crunchbase/Tracxn) go to these queues for Django consumers
+RB_DATABUCKET_EXCHANGE = config('RB_DATABUCKET_EXCHANGE', cast=str, default='databucket_exchange')
+RB_DATABUCKET_CRUNCHBASE_RK = config('RB_DATABUCKET_CRUNCHBASE_RK', cast=str, default='crunchbase_databucket')
+RB_DATABUCKET_TRACXN_RK = config('RB_DATABUCKET_TRACXN_RK', cast=str, default='tracxn_databucket')
+
+# FlareSolverr settings for Cloudflare bypass (free, open-source)
+FLARESOLVERR_URL = config('FLARESOLVERR_URL', cast=str, default='http://localhost:8191/v1')
+CLOUDFLARE_SOLVE_TIMEOUT = 60000  # milliseconds to wait for FlareSolverr solution
+
+# Dump raw scraped HTML + parsed item to <company_name>.json for testing extractors (test_crunchy_extractor.py, test_tracxy_extractor.py)
+DUMP_RAW_SCRAPED_DATA = config('DUMP_RAW_SCRAPED_DATA', default=False, cast=bool)
+DUMP_RAW_SCRAPED_DIR = config('DUMP_RAW_SCRAPED_DIR', default='./raw_scraped_dumps')
+
 LOG_ENABLED = False
 
 PLAYWRIGHT_BROWSER_TYPE = "firefox"
@@ -94,7 +101,7 @@ PLAYWRIGHT_BROWSER_TYPE = "firefox"
 # PLAYWRIGHT_PROCESS_REQUEST_HEADERS = None
 
 PLAYWRIGHT_LAUNCH_OPTIONS = {
-    "headless": True,
+    "headless": False,
     "timeout": 50 * 1000,  # 20 seconds
 }
 
@@ -150,7 +157,7 @@ DEFAULT_REQUEST_HEADERS = {
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
     "CrunchyCrawler.pipelines.RabbitMQPipeline": 300,
-    "CrunchyCrawler.pipelines.KafkaPipeline": 301,
+    "CrunchyCrawler.pipelines.DatabucketPipeline": 301,
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)
