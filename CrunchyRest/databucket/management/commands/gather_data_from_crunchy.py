@@ -112,9 +112,12 @@ class Command(BaseCommand):
                 if normalized
                 else None
             )
-            # similar_companies: from CB only when no Tracxn; when Tracxn exists we keep existing value (set by Tracxn merge = competitor URLs)
+            # similar_companies: from CB only when no Tracxn. When Tracxn exists, overwrite with Tracxn's (same as funding).
+            crunchbase_url = (data.get("crunchbase_url") or "").strip().rstrip("/")
             if not tracxn:
                 defaults["similar_companies"] = data.get("similar_companies", [])
+            else:
+                defaults["similar_companies"] = getattr(tracxn, "similar_companies", None) or []
             if tracxn:
                 defaults["funding"] = (tracxn.funding_total or "").strip() or ""
                 defaults["funding_usd"] = getattr(tracxn, "funding_total_usd", 0) or 0
@@ -134,8 +137,7 @@ class Command(BaseCommand):
                 defaults["founded"] = ""
                 defaults["merged_with_tracxn"] = False
 
-            # Normalize crunchbase_url (no trailing slash) so we match the same record as Tracxn consumer
-            crunchbase_url = (data.get("crunchbase_url") or "").strip().rstrip("/")
+            # crunchbase_url already normalized above
             crunchbase, created = Crunchbase.objects.update_or_create(
                 crunchbase_url=crunchbase_url, defaults=defaults
             )
@@ -170,7 +172,7 @@ class Command(BaseCommand):
                 )
                 if tracxn_url:
                     print(f"Discovered Tracxn URL, pushing to queue: {tracxn_url}")
-                    RabbitMQManager.publish_message(
+                    RabbitMQManager.publish_tracxn_crawl(
                         {"url": tracxn_url, "entry_point": "crunchbase"}
                     )
 

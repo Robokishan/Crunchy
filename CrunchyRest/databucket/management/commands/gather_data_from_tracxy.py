@@ -107,11 +107,13 @@ class Command(BaseCommand):
                 processed_rounds.append(processed_round)
 
             # merged_with_crunchbase: True if a Crunchbase with same domain exists (for analytics)
+            # Avoid .exists() — djongo/sqlparse can hit RecursionError on the generated SQL.
             has_cb = (
-                Crunchbase.objects.filter(normalized_domain=normalized).exists()
+                Crunchbase.objects.filter(normalized_domain=normalized).first() is not None
                 if normalized
                 else False
             )
+            competitor_urls = data.get('competitor_urls') or []
             defaults = {
                 'name': data.get('name', ''),
                 'website': website,
@@ -126,6 +128,7 @@ class Command(BaseCommand):
                 'hq_location': data.get('hq_location', ''),
                 'matched': False,
                 'merged_with_crunchbase': has_cb,
+                'similar_companies': competitor_urls,
             }
 
             tracxn_record, created = TracxnRaw.objects.update_or_create(
@@ -149,12 +152,14 @@ class Command(BaseCommand):
                         print(f"    -> CB: crunchbase_url={repr(cb.crunchbase_url)}, name={repr(cb.name)}")
                 else:
                     print(f"  - [Merge] No Crunchbase row with normalized_domain={repr(normalized)} (merge will not update any row)")
+                # Merge: overwrite Crunchbase with Tracxn values (same as funding). similar_companies from TracxnRaw (we just saved it).
                 update_kw = {
                     'funding': funding_total or '',
                     'funding_usd': funding_total_usd,
                     'rate': rate,
                     'merged_with_tracxn': True,
-                    'similar_companies': data.get('competitor_urls', []) or [],
+                    'tracxn_url': tracxn_url,
+                    'similar_companies': getattr(tracxn_record, 'similar_companies', None) or [],
                 }
                 if website:
                     update_kw['website'] = website
@@ -172,6 +177,8 @@ class Command(BaseCommand):
                         parts.append('rate')
                     if 'merged_with_tracxn' in update_kw:
                         parts.append('merged_with_tracxn')
+                    if update_kw.get('tracxn_url'):
+                        parts.append('tracxn_url')
                     if update_kw.get('similar_companies'):
                         parts.append('similar_companies')
                     print(f"  - [Merge] Updated {updated} Crunchbase record(s): {', '.join(parts)}")
@@ -190,7 +197,7 @@ class Command(BaseCommand):
                 if crunchbase_url:
                     crunchbase_url = crunchbase_url.strip().rstrip('/')
                     print(f"  - Discovered Crunchbase URL, pushing to queue: {crunchbase_url}")
-                    RabbitMQManager.publish_message({"url": crunchbase_url, "entry_point": "tracxn"})
+                    RabbitMQManager.publish_crunchbase_crawl({"url": crunchbase_url, "entry_point": "tracxn"})
 
             # Push competitor/alternate URLs to crawl queue (skip if already in TracxnRaw)
             for tracxn_url in data.get("competitor_urls", []) or []:
@@ -199,7 +206,7 @@ class Command(BaseCommand):
                     print(f"  - Competitor already in TracxnRaw, skipping: {tracxn_url}")
                 except TracxnRaw.DoesNotExist:
                     print(f"  - Pushing competitor to queue: {tracxn_url}")
-                    RabbitMQManager.publish_message({"url": tracxn_url, "entry_point": "tracxn"})
+                    RabbitMQManager.publish_tracxn_crawl({"url": tracxn_url, "entry_point": "tracxn"})
 
             return True
 

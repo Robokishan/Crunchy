@@ -77,8 +77,9 @@ def discover_tracxn_url(company_name: str, domain: str) -> str | None:
         return None
 
     # Skip if we already have this company in TracxnRaw
+    # Avoid .exists() — djongo/sqlparse can hit RecursionError on the generated SQL.
     try:
-        if TracxnRaw.objects.filter(normalized_domain=domain).exists():
+        if TracxnRaw.objects.filter(normalized_domain=domain).first() is not None:
             logger.debug(f"Company {domain} already in TracxnRaw, skipping discovery")
             return None
     except Exception as e:

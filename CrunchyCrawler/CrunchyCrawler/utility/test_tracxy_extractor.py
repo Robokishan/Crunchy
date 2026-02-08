@@ -75,7 +75,7 @@ def run_on_html(html: str, page_url: str = "") -> dict:
             val = ext_cls().getValue(text=[html])
             if val:
                 item.update(val)
-                print(f"  + {ext_cls.__name__}: {val}")
+                # print(f"  + {ext_cls.__name__}: {val}")
         except Exception as e:
             print(f"  {ext_cls.__name__} error: {e}")
 
@@ -85,9 +85,9 @@ def run_on_html(html: str, page_url: str = "") -> dict:
     )
     item["competitor_urls"] = competitor_urls
     n = len(competitor_urls)
-    print(f"Competitor/alternate URLs ({n}):")
-    for u in competitor_urls:
-        print(f"  {u}")
+    # print(f"Competitor/alternate URLs ({n}):")
+    # for u in competitor_urls:
+    #     print(f"  {u}")
 
     return item
 
