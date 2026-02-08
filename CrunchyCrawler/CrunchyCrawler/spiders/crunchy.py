@@ -202,6 +202,7 @@ class CrunchySpider(RabbitMQMixin):
         # Add source tag for databucket routing (Crunchbase vs Tracxn queue)
         item["source"] = "crunchbase"
         item["crunchbase_url"] = response.url
+        item["entry_point"] = response.meta.get("entry_point")
         delivery_tag = response.meta.get("delivery_tag")
         item["delivery_tag"] = delivery_tag
         item["queue"] = response.meta.get("queue")
@@ -231,9 +232,15 @@ class CrunchySpider(RabbitMQMixin):
         x = Selector(response)
         item = TracxnDataParser.extract_item(x)
 
+        # Competitors and alternates: configurable XPaths in TracxnDataParser
+        item["competitor_urls"] = TracxnDataParser.extract_competitors_and_alternates(
+            x, response.url
+        )
+
         # Add source tag for databucket routing (Crunchbase vs Tracxn queue)
         item["source"] = "tracxn"
         item["tracxn_url"] = response.url
+        item["entry_point"] = response.meta.get("entry_point")
         item["delivery_tag"] = response.meta.get("delivery_tag")
         item["queue"] = response.meta.get("queue")
         item["_response"] = response.status

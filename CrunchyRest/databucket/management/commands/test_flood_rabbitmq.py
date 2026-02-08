@@ -17,4 +17,4 @@ class Command(BaseCommand):
 
         for index, doc in enumerate(queryset):
             print("Published", doc.name, doc.crunchbase_url, index)
-            RabbitMQManager.publish_message(doc.crunchbase_url)
+            RabbitMQManager.publish_crunchbase_crawl({"url": doc.crunchbase_url, "entry_point": "flood_test"})

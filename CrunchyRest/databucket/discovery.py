@@ -1,5 +1,5 @@
 """
-Cross-discovery: find Tracxn URLs via DuckDuckGo for Crunchbase companies.
+Cross-discovery: find Tracxn or Crunchbase URLs via DuckDuckGo.
 
 Uses the ddgs library (no API key, no signup). pip install ddgs
 """
@@ -77,8 +77,9 @@ def discover_tracxn_url(company_name: str, domain: str) -> str | None:
         return None
 
     # Skip if we already have this company in TracxnRaw
+    # Avoid .exists() — djongo/sqlparse can hit RecursionError on the generated SQL.
     try:
-        if TracxnRaw.objects.filter(normalized_domain=domain).exists():
+        if TracxnRaw.objects.filter(normalized_domain=domain).first() is not None:
             logger.debug(f"Company {domain} already in TracxnRaw, skipping discovery")
             return None
     except Exception as e:
@@ -115,3 +116,77 @@ def discover_tracxn_url(company_name: str, domain: str) -> str | None:
         logger.info(f"No Tracxn URL found for {company_name} ({domain})")
 
     return tracxn_url
+
+
+# Crunchbase organization URL pattern
+_CRUNCHBASE_ORG_RE = re.compile(
+    r"(https?://[^/]*crunchbase\.com/organization/[^/?#]+)(?:/|#|\?|$)"
+)
+
+
+def _crunchbase_canonical_url(url: str) -> str:
+    """Return canonical Crunchbase organization URL (strip trailing slash, path, query, fragment)."""
+    m = _CRUNCHBASE_ORG_RE.search(url)
+    out = m.group(1) if m else url.split("?")[0].split("#")[0]
+    return out.rstrip("/")
+
+
+def _match_candidates_crunchbase(company_name: str, domain: str) -> set[str]:
+    """Build set of slug-like strings to match against Crunchbase URL slugs."""
+    candidates = set()
+    if domain:
+        candidates.add(domain.split(".")[0].lower())
+    if (company_name or "").strip():
+        slug = re.sub(r"[^\w\s-]", "", (company_name or "").strip().lower())
+        slug = re.sub(r"[-\s]+", "-", slug).strip("-")
+        if slug:
+            candidates.add(slug)
+            candidates.add(slug.replace("-", ""))
+    return candidates
+
+
+def discover_crunchbase_url(company_name: str, domain: str) -> str | None:
+    """
+    Find a Crunchbase organization page URL via DuckDuckGo search.
+
+    Args:
+        company_name: The company name to search for
+        domain: The normalized domain (e.g., "stripe.com")
+
+    Returns:
+        The Crunchbase organization URL if found, None otherwise
+    """
+    if not domain:
+        logger.debug(f"No domain provided for {company_name}, skipping Crunchbase discovery")
+        return None
+
+    crunchbase_url = None
+    queries = []
+    if (company_name or "").strip():
+        queries.append(f'site:crunchbase.com/organization "{company_name.strip()}"')
+        queries.append(f'site:crunchbase.com {company_name.strip()}')
+    queries.append(f'site:crunchbase.com/organization "{domain}"')
+
+    candidates = _match_candidates_crunchbase(company_name, domain)
+    for query in queries:
+        logger.info(f"DuckDuckGo search (Crunchbase): {query}")
+        raw_urls = _duckduckgo_search(query, max_results=10)
+        for url in raw_urls:
+            if "crunchbase.com/organization" not in url:
+                continue
+            canonical = _crunchbase_canonical_url(url)
+            slug = canonical.rstrip("/").split("/organization/")[-1].split("?")[0].lower()
+            if not slug:
+                continue
+            if slug in candidates or (domain and domain.split(".")[0].lower() in slug):
+                crunchbase_url = canonical
+                logger.info(f"Found Crunchbase URL for {company_name or domain}: {crunchbase_url}")
+                break
+        if crunchbase_url:
+            break
+        time.sleep(DUCKDUCKGO_SEARCH_DELAY)
+
+    if not crunchbase_url:
+        logger.info(f"No Crunchbase URL found for {company_name} ({domain})")
+
+    return crunchbase_url

@@ -168,15 +168,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # rabbitMQ
 RABBITMQ_URL = config('RABBITMQ_URL', default=None)
-RB_MAIN_EXCHANGE = config('RABBIT_MQ_MAIN_EXCHANGE', cast=str)
-RB_MAIN_ROUTING_KEY = config('RABBIT_MQ_MAIN_ROUTING_KEY', cast=str)
-RB_MAIN_QUEUE = config('RABBIT_MQ_MAIN_QUEUE', cast=str)
-
-# priority rabbitmq queue
-RABBIT_MQ_PRIORITY_EXCHANGE = config('RABBIT_MQ_PRIORITY_EXCHANGE', cast=str)
-RABBIT_MQ_PRIORITY_ROUTING_KEY = config(
-    'RABBIT_MQ_PRIORITY_ROUTING_KEY', cast=str)
-RABBIT_MQ_PRIORITY_QUEUE = config('RABBIT_MQ_PRIORITY_QUEUE', cast=str)
+# Decoupled crawl queues (spider consumes from both)
+RB_CRAWL_EXCHANGE = config('RB_CRAWL_EXCHANGE', cast=str, default='crawl_exchange')
+RB_CRUNCHBASE_CRAWL_QUEUE = config('RB_CRUNCHBASE_CRAWL_QUEUE', cast=str, default='crawl_crunchbase_queue')
+RB_CRUNCHBASE_CRAWL_RK = config('RB_CRUNCHBASE_CRAWL_RK', cast=str, default='crawl_crunchbase')
+RB_TRACXN_CRAWL_QUEUE = config('RB_TRACXN_CRAWL_QUEUE', cast=str, default='crawl_tracxn_queue')
+RB_TRACXN_CRAWL_RK = config('RB_TRACXN_CRAWL_RK', cast=str, default='crawl_tracxn')
 
 # Databucket queues (scraped items from crawler, consumed by Django)
 RB_DATABUCKET_EXCHANGE = config(

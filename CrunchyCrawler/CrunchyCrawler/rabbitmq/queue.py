@@ -1,5 +1,6 @@
 from scrapy.utils.request import request_from_dict
 import pickle
+import json
 from scrapy import Request
 from scrapy_playwright.page import PageMethod
 from loguru import logger
@@ -75,6 +76,24 @@ class SpiderQueue(Base):
             return self._decode_request(body)
 
 
+def _parse_crawl_message(body: str):
+    """Parse crawl queue message: JSON {"url": ..., "entry_point": ...} or plain URL. Returns (url, entry_point)."""
+    body = (body or "").strip()
+    if not body:
+        return "", None
+    if body.startswith("{") and "url" in body:
+        try:
+            data = json.loads(body)
+            url = data.get("url", "")
+            entry_point = data.get("entry_point")
+            return url or "", entry_point
+        except (json.JSONDecodeError, TypeError):
+            pass
+    # Plain URL: infer entry_point from domain
+    entry_point = "crunchbase" if "crunchbase.com" in body else "tracxn"
+    return body, entry_point
+
+
 class MainQueue():
 
     def __init__(self, server, spider, key=None, exchange=None):
@@ -111,8 +130,9 @@ class MainQueue():
         return pickle.dumps(request.to_dict(spider=self.spider))
 
     def _decode_request(self, encoded_request, delivery_tag):
-        """Decode an request previously encoded"""
-        return generateRequest(encoded_request, delivery_tag, queue="normal")
+        """Decode body: JSON with url/entry_point or plain URL string."""
+        url, entry_point = _parse_crawl_message(encoded_request)
+        return generateRequest(url, delivery_tag, queue="normal", entry_point=entry_point)
 
     def clear(self):
         """Clear queue/stack"""
@@ -154,8 +174,9 @@ class PriorityQueue():
         return pickle.dumps(request.to_dict(spider=self.spider))
 
     def _decode_request(self, encoded_request, delivery_tag):
-        """Decode an request previously encoded"""
-        return generateRequest(encoded_request, delivery_tag, queue="priority")
+        """Decode body: JSON with url/entry_point or plain URL string."""
+        url, entry_point = _parse_crawl_message(encoded_request)
+        return generateRequest(url, delivery_tag, queue="priority", entry_point=entry_point)
 
     def clear(self):
         """Clear queue/stack"""

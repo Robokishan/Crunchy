@@ -26,12 +26,17 @@ class Crunchbase(models.Model):
     stocksymbol = models.TextField()
     # NEW: normalized domain for entity matching
     normalized_domain = models.TextField(null=True, blank=True)
+    # True when a TracxnRaw with same normalized_domain exists (for analytics: False = CB-only)
+    merged_with_tracxn = models.BooleanField(default=False)
+    # Tracxn URL used when this row was merged from Tracxn (set by Tracxn consumer on merge)
+    tracxn_url = models.URLField(null=True, blank=True)
 
     objects = models.DjongoManager()
 
     class Meta:
         indexes = [
             models.Index(fields=['normalized_domain']),
+            models.Index(fields=['merged_with_tracxn']),
         ]
 
 
@@ -59,6 +64,10 @@ class TracxnRaw(models.Model):
     founded = models.TextField(null=True, blank=True)
     hq_location = models.TextField(null=True, blank=True)
     matched = models.BooleanField(default=False)
+    # True when a Crunchbase with same normalized_domain exists (for analytics: False = Tracxn-only)
+    merged_with_crunchbase = models.BooleanField(default=False)
+    # Tracxn competitor/alternate company URLs (from extract_competitors_and_alternates); used to fill Crunchbase.similar_companies when CB is scraped later
+    similar_companies = models.JSONField(default=list)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -68,6 +77,7 @@ class TracxnRaw(models.Model):
         indexes = [
             models.Index(fields=['normalized_domain']),
             models.Index(fields=['matched']),
+            models.Index(fields=['merged_with_crunchbase']),
         ]
 
 
