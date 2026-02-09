@@ -47,6 +47,14 @@ class InterestedIndustries(models.Model):
 
     objects = models.DjongoManager()
 
+    @classmethod
+    def get_interested_industries(cls):
+        """Return the list of interested industry names, or [] if no row exists."""
+        obj, _ = cls.objects.get_or_create(
+            key="industry", defaults={"industries": []}
+        )
+        return getattr(obj, "industries", None) or []
+
 
 class TracxnRaw(models.Model):
     """Raw scraped data from Tracxn."""

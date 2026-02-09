@@ -3,7 +3,8 @@ Consume Crunchbase scraped items from RabbitMQ databucket queue.
 
 Saves to Crunchbase collection. Discovers Tracxn URL (DuckDuckGo) and pushes
 to crawl queue only when entry_point != "tracxn" (i.e. not when we came from Tracxn).
-We never push similar/competitor companies from Crunchbase.
+Pushes similar/competitor companies to the crawl queue only when this company's
+industries intersect the configured interested industries.
 
 Usage:
     python manage.py gather_data_from_crunchy
@@ -15,6 +16,7 @@ from rabbitmq.apps import RabbitMQManager
 from rabbitmq.databucket_consumer import run_consumer
 from databucket.models import Crunchbase, TracxnRaw
 from databucket.discovery import discover_tracxn_url
+from databucket.similar_companies import publish_similar_companies_if_interested
 from utils.domain import normalize_domain
 import regex as re
 from utils.Currency import CurrencyConverter
@@ -165,6 +167,11 @@ class Command(BaseCommand):
                             f"    -> Tracxn: tracxn_url={repr(getattr(o, 'tracxn_url', None))}, name={repr(getattr(o, 'name', None))}"
                         )
 
+            # Publish similar companies only when this company's industries intersect interested industries
+            publish_similar_companies_if_interested(
+                industries, defaults.get("similar_companies") or [], "crunchbase"
+            )
+
             # Cross-discovery: find Tracxn URL only when this CB page was not discovered from Tracxn
             if data.get("entry_point") != "tracxn" and normalized:
                 tracxn_url = discover_tracxn_url(
@@ -178,5 +185,7 @@ class Command(BaseCommand):
 
             return True
         except Exception as e:
-            print("Error", e)
+            print(f"Error: {e}")
+            import traceback
+            traceback.print_exc()
             return False
