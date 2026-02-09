@@ -89,99 +89,86 @@ def _parse_crawl_message(body: str):
             return url or "", entry_point
         except (json.JSONDecodeError, TypeError):
             pass
-    # Plain URL: infer entry_point from domain
-    entry_point = "crunchbase" if "crunchbase.com" in body else "tracxn"
-    return body, entry_point
+    return body, None
 
 
-class MainQueue():
+def _is_crunchbase_url(url):
+    """True iff URL is clearly a Crunchbase URL."""
+    return bool(url and "crunchbase.com" in url)
 
-    def __init__(self, server, spider, key=None, exchange=None):
-        """Initialize per-spider RabbitMQ queue.
-        Parameters:
-            server -- rabbitmq connection
-            spider -- spider instance
-            key -- key for this queue (e.g. "%(spider)s:queue")
+
+def _is_tracxn_url(url):
+    """True iff URL is clearly a Tracxn URL."""
+    return bool(url and "tracxn.com" in url)
+
+
+class CrawlQueue:
+    """Single crawl queue (Crunchbase or Tracxn). Consumes from one RabbitMQ queue; validates URL matches queue type."""
+
+    def __init__(self, server, spider, key=None, meta_label="crunchbase", exchange=None):
+        """
+        Args:
+            server: RabbitMQ channel
+            spider: spider instance
+            key: RabbitMQ queue name (e.g. crawl_crunchbase_queue)
+            meta_label: 'crunchbase' or 'tracxn' (for request meta and URL validation)
         """
         self.server = server
         self.spider = spider
-
-        # key is just queue name
         self.key = key
-        logger.debug(f"Main queue: {self.key}")
+        self.meta_label = meta_label
+        logger.debug("Crawl queue: {} ({})", self.key, meta_label)
 
     def __len__(self):
-        response = self.server.queue_declare(
-            self.key, passive=True)
+        if self.key is None:
+            return 0
+        response = self.server.queue_declare(self.key, passive=True)
         return response.method.message_count
 
     def push(self, request):
         pass
 
     def pop(self):
+        if self.key is None:
+            return None
         method_frame, header, body = self.server.basic_get(queue=self.key)
-        logger.debug(f"Response from main queue ", body, method_frame, header, self.key)
-        if body != None:
-            return self._decode_request(body.decode('utf-8'), method_frame.delivery_tag)
-
-    # i don't think this will require
-    def _encode_request(self, request):
-        """Encode a request object"""
-        return pickle.dumps(request.to_dict(spider=self.spider))
+        if body is None:
+            return None
+        encoded = body.decode("utf-8")
+        request = self._decode_request(encoded, method_frame.delivery_tag)
+        if request is None:
+            # Invalid URL for this queue: ack to remove message, do not create request
+            self.server.basic_ack(delivery_tag=method_frame.delivery_tag)
+            logger.warning(
+                "Discarded message from {} queue (URL did not match): {}",
+                self.meta_label,
+                encoded[:200],
+            )
+        else:
+            logger.debug(
+                "From {} crawl queue: {}",
+                self.meta_label,
+                self.key,
+            )
+        return request
 
     def _decode_request(self, encoded_request, delivery_tag):
-        """Decode body: JSON with url/entry_point or plain URL string."""
+        """Decode body; return Request or None if URL does not match this queue (strict URL handling)."""
         url, entry_point = _parse_crawl_message(encoded_request)
-        return generateRequest(url, delivery_tag, queue="normal", entry_point=entry_point)
+        if not url:
+            return None
+        if self.meta_label == "crunchbase":
+            if not _is_crunchbase_url(url):
+                return None
+        else:  # tracxn
+            if not _is_tracxn_url(url):
+                return None
+        return generateRequest(
+            url, delivery_tag, queue=self.meta_label, entry_point=entry_point
+        )
 
     def clear(self):
-        """Clear queue/stack"""
-        self.server.queue_purge(self.key)
+        if self.key is not None:
+            self.server.queue_purge(self.key)
 
-class PriorityQueue():
-
-    def __init__(self, server, spider, key=None, exchange=None):
-        """Initialize per-spider RabbitMQ queue.
-        Parameters:
-            server -- rabbitmq connection
-            spider -- spider instance
-            key -- key for this queue (e.g. "%(spider)s:queue")
-        """
-        self.server = server
-        self.spider = spider
-
-        # key is just queue name
-        self.key = key
-        logger.info(f"Priority queue: {self.key}")
-
-    def __len__(self):
-        response = self.server.queue_declare(
-            self.key, passive=True)
-        return response.method.message_count
-
-    def push(self, request):
-        pass
-
-    def pop(self):
-        method_frame, header, body = self.server.basic_get(queue=self.key)
-        logger.info(f"Response from priority queue: {body} ,{method_frame}, {header}, {self.key}")
-        if body != None:
-            return self._decode_request(body.decode('utf-8'), method_frame.delivery_tag)
-
-    # i don't think this will require
-    def _encode_request(self, request):
-        """Encode a request object"""
-        return pickle.dumps(request.to_dict(spider=self.spider))
-
-    def _decode_request(self, encoded_request, delivery_tag):
-        """Decode body: JSON with url/entry_point or plain URL string."""
-        url, entry_point = _parse_crawl_message(encoded_request)
-        return generateRequest(url, delivery_tag, queue="priority", entry_point=entry_point)
-
-    def clear(self):
-        """Clear queue/stack"""
-        self.server.queue_purge(self.key)
-
-
-    
 

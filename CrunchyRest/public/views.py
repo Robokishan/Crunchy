@@ -293,13 +293,9 @@ class IndustryList(generics.ListAPIView):
 
 @ api_view(['GET'])
 def PendingInQueue(request):
-    priorityPending_messages = RabbitMQManager.get_pending_in_priority_queue()
-    normalPending_messages = RabbitMQManager.get_pending_in_normal_queue()
-
-    if priorityPending_messages is None:
-        priorityPending_messages = 0
-
-    if normalPending_messages is None:
-        normalPending_messages = 0
-
-    return Response({"priority": priorityPending_messages, "normal": normalPending_messages})
+    crunchbase_pending = RabbitMQManager.get_pending_in_crunchbase_crawl_queue()
+    tracxn_pending = RabbitMQManager.get_pending_in_tracxn_crawl_queue()
+    return Response({
+        "crunchbase": crunchbase_pending if crunchbase_pending is not None else 0,
+        "tracxn": tracxn_pending if tracxn_pending is not None else 0,
+    })

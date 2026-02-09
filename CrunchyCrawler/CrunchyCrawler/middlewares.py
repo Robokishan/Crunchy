@@ -27,19 +27,16 @@ class CrunchyUserAgentMiddleware(object):
         return None
 
 class RabbitMQMiddleware(object):
-    def __init__(self, channel, priority_channel):
-        self.channel = channel
-        self.priority_channel = priority_channel
+    def __init__(self, cb_channel, tracxn_channel):
         self.channels = {
-            'normal': channel,
-            'priority': priority_channel,
+            'crunchbase': cb_channel,
+            'tracxn': tracxn_channel,
         }
-
 
     @classmethod
     def from_crawler(cls, crawler):
-        channel, priority_channel = get_channels()
-        return cls(channel, priority_channel)
+        cb_channel, tracxn_channel = get_channels()
+        return cls(cb_channel, tracxn_channel)
     
     # only send ack or nack incase of final result
     def process_response(self, request, response, spider):
@@ -61,18 +58,16 @@ class RabbitMQMiddleware(object):
             channel.basic_nack(delivery_tag=delivery_tag, requeue=True)
 
 class RabbitMQSpiderMiddleware:
-    def __init__(self, channel, priority_channel):
-        self.channel = channel
-        self.priority_channel = priority_channel
+    def __init__(self, cb_channel, tracxn_channel):
         self.channels = {
-            'normal': channel,
-            'priority': priority_channel,
+            'crunchbase': cb_channel,
+            'tracxn': tracxn_channel,
         }
 
     @classmethod
     def from_crawler(cls, crawler):
-        channel, priority_channel = get_channels()
-        return cls(channel, priority_channel)
+        cb_channel, tracxn_channel = get_channels()
+        return cls(cb_channel, tracxn_channel)
     
     def nack(self, delivery_tag, queue):
         channel = self.channels.get(queue)

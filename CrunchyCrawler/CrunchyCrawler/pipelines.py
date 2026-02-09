@@ -102,18 +102,16 @@ class DatabucketPipeline:
 
 
 class RabbitMQPipeline:
-    def __init__(self, channel, priority_channel):
-        self.channel = channel
-        self.priority_channel = priority_channel
+    def __init__(self, cb_channel, tracxn_channel):
         self.channels = {
-            'normal': self.channel,
-            'priority': self.priority_channel,
+            'crunchbase': cb_channel,
+            'tracxn': tracxn_channel,
         }
 
     @classmethod
     def from_crawler(cls, crawler):
-        channel, priority_channel = get_channels()
-        return cls(channel, priority_channel)
+        cb_channel, tracxn_channel = get_channels()
+        return cls(cb_channel, tracxn_channel)
 
     def open_spider(self, spider):
         pass

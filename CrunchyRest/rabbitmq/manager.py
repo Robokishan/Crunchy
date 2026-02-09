@@ -33,17 +33,12 @@ connection_string = settings.RABBITMQ_URL
 
 class RabbitMQManager:
     _channel = None
-    _priority_channel = None
     _databucket_channel = None
     _crawl_channel = None
 
     @classmethod
     def set_channel(cls, channel):
         cls._channel = channel
-
-    @classmethod
-    def set_priority_channel(cls, channel):
-        cls._priority_channel = channel
 
     @classmethod
     def set_crawl_channel(cls, channel):
@@ -110,6 +105,10 @@ class RabbitMQManager:
     @classmethod
     def publish_crunchbase_crawl(cls, message):
         """Publish a crawl request to the Crunchbase crawl queue (decoupled)."""
+        if isinstance(message, dict):
+            url = message.get("url", "")
+            if url and "crunchbase.com" not in url:
+                raise ValueError("publish_crunchbase_crawl requires a Crunchbase URL")
         cls._ensure_crawl_channel()
         if cls._crawl_channel is None:
             return
@@ -127,6 +126,10 @@ class RabbitMQManager:
     @classmethod
     def publish_tracxn_crawl(cls, message):
         """Publish a crawl request to the Tracxn crawl queue (decoupled)."""
+        if isinstance(message, dict):
+            url = message.get("url", "")
+            if url and "tracxn.com" not in url:
+                raise ValueError("publish_tracxn_crawl requires a Tracxn URL")
         cls._ensure_crawl_channel()
         if cls._crawl_channel is None:
             return
@@ -181,7 +184,7 @@ class RabbitMQManager:
         RabbitMQManager.set_databucket_channel(databucket_channel)
 
     @staticmethod
-    def get_pending_in_priority_queue():
+    def get_pending_in_tracxn_crawl_queue():
         """Pending messages in Tracxn crawl queue."""
         if settings.RABBITMQ_URL is None:
             return None
@@ -195,7 +198,7 @@ class RabbitMQManager:
             return None
 
     @staticmethod
-    def get_pending_in_normal_queue():
+    def get_pending_in_crunchbase_crawl_queue():
         """Pending messages in Crunchbase crawl queue."""
         if settings.RABBITMQ_URL is None:
             return None
