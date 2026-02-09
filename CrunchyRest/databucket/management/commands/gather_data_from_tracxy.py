@@ -16,8 +16,9 @@ from django.core.management import BaseCommand
 from django.conf import settings
 from rabbitmq.apps import RabbitMQManager
 from rabbitmq.databucket_consumer import run_consumer
-from databucket.models import Crunchbase, InterestedIndustries, TracxnRaw
+from databucket.models import Crunchbase, TracxnRaw
 from databucket.discovery import discover_crunchbase_url
+from databucket.similar_companies import publish_similar_companies_if_interested
 from utils.domain import normalize_domain
 from utils.Currency import CurrencyConverter
 import regex as re
@@ -201,27 +202,17 @@ class Command(BaseCommand):
                     RabbitMQManager.publish_crunchbase_crawl({"url": crunchbase_url, "entry_point": "tracxn"})
 
             # Push competitor/alternate URLs only when merged Crunchbase row has industries in interested list
-            interested = InterestedIndustries.get_interested_industries()
-            if not interested:
-                print(f"  - Skipping competitor push: no interested industries configured")
-            elif normalized:
+            if not normalized:
+                print("  - Skipping competitor push: no normalized_domain")
+            else:
                 merged_cb = Crunchbase.objects.filter(normalized_domain=normalized).first()
                 if not merged_cb:
-                    print(f"  - Skipping competitor push: no merged Crunchbase row for domain")
+                    print("  - Skipping competitor push: no merged Crunchbase row for domain")
                 else:
                     industries = getattr(merged_cb, "industries", None) or []
-                    if set(industries) & set(interested):
-                        for tracxn_url in data.get("competitor_urls", []) or []:
-                            try:
-                                TracxnRaw.objects.get(tracxn_url=tracxn_url)
-                                print(f"  - Competitor already in TracxnRaw, skipping: {tracxn_url}")
-                            except TracxnRaw.DoesNotExist:
-                                print(f"  - Pushing competitor to queue: {tracxn_url}")
-                                RabbitMQManager.publish_tracxn_crawl({"url": tracxn_url, "entry_point": "tracxn"})
-                    else:
-                        print(f"  - Skipping competitor push: industries not in interested list")
-            else:
-                print(f"  - Skipping competitor push: no normalized_domain")
+                    publish_similar_companies_if_interested(
+                        industries, data.get("competitor_urls") or [], "tracxn"
+                    )
 
             return True
 

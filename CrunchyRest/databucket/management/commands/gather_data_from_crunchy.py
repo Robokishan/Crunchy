@@ -14,8 +14,9 @@ from django.core.management import BaseCommand
 from django.conf import settings
 from rabbitmq.apps import RabbitMQManager
 from rabbitmq.databucket_consumer import run_consumer
-from databucket.models import Crunchbase, InterestedIndustries, TracxnRaw
+from databucket.models import Crunchbase, TracxnRaw
 from databucket.discovery import discover_tracxn_url
+from databucket.similar_companies import publish_similar_companies_if_interested
 from utils.domain import normalize_domain
 import regex as re
 from utils.Currency import CurrencyConverter
@@ -167,35 +168,9 @@ class Command(BaseCommand):
                         )
 
             # Publish similar companies only when this company's industries intersect interested industries
-            interested = InterestedIndustries.get_interested_industries()
-            industries_set = set(industries)
-            interested_set = set(interested)
-            similar_companies = defaults.get("similar_companies") or []
-            if (industries_set & interested_set) and similar_companies:
-                for url in similar_companies:
-                    url = (url or "").strip().rstrip("/")
-                    if not url:
-                        continue
-                    if "crunchbase.com" in url:
-                        if Crunchbase.objects.filter(crunchbase_url=url).exists():
-                            continue
-                        try:
-                            RabbitMQManager.publish_crunchbase_crawl(
-                                {"url": url, "entry_point": "crunchbase"}
-                            )
-                            print(f"  - Pushing similar company (CB) to queue: {url}")
-                        except Exception as e:
-                            print(f"  - Failed to push CB URL {url}: {e}")
-                    elif "tracxn.com" in url:
-                        if TracxnRaw.objects.filter(tracxn_url=url).exists():
-                            continue
-                        try:
-                            RabbitMQManager.publish_tracxn_crawl(
-                                {"url": url, "entry_point": "crunchbase"}
-                            )
-                            print(f"  - Pushing similar company (Tracxn) to queue: {url}")
-                        except Exception as e:
-                            print(f"  - Failed to push Tracxn URL {url}: {e}")
+            publish_similar_companies_if_interested(
+                industries, defaults.get("similar_companies") or [], "crunchbase"
+            )
 
             # Cross-discovery: find Tracxn URL only when this CB page was not discovered from Tracxn
             if data.get("entry_point") != "tracxn" and normalized:
@@ -210,5 +185,7 @@ class Command(BaseCommand):
 
             return True
         except Exception as e:
-            print("Error", e)
+            print(f"Error: {e}")
+            import traceback
+            traceback.print_exc()
             return False
