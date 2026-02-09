@@ -3,7 +3,8 @@ Consume Crunchbase scraped items from RabbitMQ databucket queue.
 
 Saves to Crunchbase collection. Discovers Tracxn URL (DuckDuckGo) and pushes
 to crawl queue only when entry_point != "tracxn" (i.e. not when we came from Tracxn).
-We never push similar/competitor companies from Crunchbase.
+Pushes similar/competitor companies to the crawl queue only when this company's
+industries intersect the configured interested industries.
 
 Usage:
     python manage.py gather_data_from_crunchy
@@ -13,7 +14,7 @@ from django.core.management import BaseCommand
 from django.conf import settings
 from rabbitmq.apps import RabbitMQManager
 from rabbitmq.databucket_consumer import run_consumer
-from databucket.models import Crunchbase, TracxnRaw
+from databucket.models import Crunchbase, InterestedIndustries, TracxnRaw
 from databucket.discovery import discover_tracxn_url
 from utils.domain import normalize_domain
 import regex as re
@@ -164,6 +165,37 @@ class Command(BaseCommand):
                         print(
                             f"    -> Tracxn: tracxn_url={repr(getattr(o, 'tracxn_url', None))}, name={repr(getattr(o, 'name', None))}"
                         )
+
+            # Publish similar companies only when this company's industries intersect interested industries
+            interested = InterestedIndustries.get_interested_industries()
+            industries_set = set(industries)
+            interested_set = set(interested)
+            similar_companies = defaults.get("similar_companies") or []
+            if (industries_set & interested_set) and similar_companies:
+                for url in similar_companies:
+                    url = (url or "").strip().rstrip("/")
+                    if not url:
+                        continue
+                    if "crunchbase.com" in url:
+                        if Crunchbase.objects.filter(crunchbase_url=url).exists():
+                            continue
+                        try:
+                            RabbitMQManager.publish_crunchbase_crawl(
+                                {"url": url, "entry_point": "crunchbase"}
+                            )
+                            print(f"  - Pushing similar company (CB) to queue: {url}")
+                        except Exception as e:
+                            print(f"  - Failed to push CB URL {url}: {e}")
+                    elif "tracxn.com" in url:
+                        if TracxnRaw.objects.filter(tracxn_url=url).exists():
+                            continue
+                        try:
+                            RabbitMQManager.publish_tracxn_crawl(
+                                {"url": url, "entry_point": "crunchbase"}
+                            )
+                            print(f"  - Pushing similar company (Tracxn) to queue: {url}")
+                        except Exception as e:
+                            print(f"  - Failed to push Tracxn URL {url}: {e}")
 
             # Cross-discovery: find Tracxn URL only when this CB page was not discovered from Tracxn
             if data.get("entry_point") != "tracxn" and normalized:

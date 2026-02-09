@@ -166,8 +166,7 @@ class SettingsList(generics.ListAPIView):
     serializer_class = IndustrySerializer
 
     def get_queryset(self):
-        interested_industries = InterestedIndustries.objects.get(
-            key="industry").industries
+        interested_industries = InterestedIndustries.get_interested_industries()
 
         queryset = Crunchbase.objects.values_list(
             'industries', flat=True).distinct()

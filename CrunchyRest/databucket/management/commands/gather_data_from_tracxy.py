@@ -5,7 +5,8 @@ Saves to TracxnRaw, merges into Crunchbase. Discovers Crunchbase URL (DuckDuckGo
 and pushes to crawl queue only when entry_point != "crunchbase". When we discover
 a CB URL from Tracxn we create/update Crunchbase from Tracxn data so merge works
 when scrape starts from Tracxn; the CB consumer will update that record when the
-CB page is scraped. Competitor/alternate URLs from Tracxn are pushed to the crawl queue.
+CB page is scraped. Competitor/alternate URLs are pushed to the crawl queue only
+when the merged Crunchbase row's industries intersect the configured interested industries.
 
 Usage:
     python manage.py gather_data_from_tracxy
@@ -15,7 +16,7 @@ from django.core.management import BaseCommand
 from django.conf import settings
 from rabbitmq.apps import RabbitMQManager
 from rabbitmq.databucket_consumer import run_consumer
-from databucket.models import Crunchbase, TracxnRaw
+from databucket.models import Crunchbase, InterestedIndustries, TracxnRaw
 from databucket.discovery import discover_crunchbase_url
 from utils.domain import normalize_domain
 from utils.Currency import CurrencyConverter
@@ -199,14 +200,28 @@ class Command(BaseCommand):
                     print(f"  - Discovered Crunchbase URL, pushing to queue: {crunchbase_url}")
                     RabbitMQManager.publish_crunchbase_crawl({"url": crunchbase_url, "entry_point": "tracxn"})
 
-            # Push competitor/alternate URLs to crawl queue (skip if already in TracxnRaw)
-            for tracxn_url in data.get("competitor_urls", []) or []:
-                try:
-                    TracxnRaw.objects.get(tracxn_url=tracxn_url)
-                    print(f"  - Competitor already in TracxnRaw, skipping: {tracxn_url}")
-                except TracxnRaw.DoesNotExist:
-                    print(f"  - Pushing competitor to queue: {tracxn_url}")
-                    RabbitMQManager.publish_tracxn_crawl({"url": tracxn_url, "entry_point": "tracxn"})
+            # Push competitor/alternate URLs only when merged Crunchbase row has industries in interested list
+            interested = InterestedIndustries.get_interested_industries()
+            if not interested:
+                print(f"  - Skipping competitor push: no interested industries configured")
+            elif normalized:
+                merged_cb = Crunchbase.objects.filter(normalized_domain=normalized).first()
+                if not merged_cb:
+                    print(f"  - Skipping competitor push: no merged Crunchbase row for domain")
+                else:
+                    industries = getattr(merged_cb, "industries", None) or []
+                    if set(industries) & set(interested):
+                        for tracxn_url in data.get("competitor_urls", []) or []:
+                            try:
+                                TracxnRaw.objects.get(tracxn_url=tracxn_url)
+                                print(f"  - Competitor already in TracxnRaw, skipping: {tracxn_url}")
+                            except TracxnRaw.DoesNotExist:
+                                print(f"  - Pushing competitor to queue: {tracxn_url}")
+                                RabbitMQManager.publish_tracxn_crawl({"url": tracxn_url, "entry_point": "tracxn"})
+                    else:
+                        print(f"  - Skipping competitor push: industries not in interested list")
+            else:
+                print(f"  - Skipping competitor push: no normalized_domain")
 
             return True
 
