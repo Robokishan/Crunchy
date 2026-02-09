@@ -374,16 +374,16 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
                   retried === "done"
                     ? "success"
                     : retried === "error"
-                    ? "error"
-                    : "primary"
+                      ? "error"
+                      : "primary"
                 }
                 variant="outlined"
               >
                 {retried === "init"
                   ? "Retry"
                   : retried === "done"
-                  ? "Pushed🔥"
-                  : "Error!"}
+                    ? "Pushed🔥"
+                    : "Error!"}
               </LoadingButton>
             </>
           );
@@ -414,9 +414,9 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
     },
     muiToolbarAlertBannerProps: isError
       ? {
-          color: "error",
-          children: "Error loading data",
-        }
+        color: "error",
+        children: "Error loading data",
+      }
       : undefined,
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
@@ -485,7 +485,9 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
                       "-"
                     )
                   ) : (
-                    value
+                    typeof value === "object"
+                      ? JSON.stringify(value)
+                      : value
                   )}
                 </span>
               </div>
