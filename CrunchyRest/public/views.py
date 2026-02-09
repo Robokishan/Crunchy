@@ -33,6 +33,33 @@ class CompaniesListView(generics.ListAPIView):
     serializer_class = CompanySerializer
     pagination_class = CompanyPagination
 
+    @staticmethod
+    def _crunchbase_doc_to_company_shape(doc):
+        """Normalize a Crunchbase document (dict) to Company-shaped keys for CompanySerializer."""
+        if not isinstance(doc, dict):
+            return doc
+        return {
+            **doc,
+            'funding_rounds': doc.get('funding_rounds', []),
+            'sources': doc.get('sources', ['crunchbase']),
+            'source_priority': doc.get('source_priority', {}),
+            'funding_total_usd': doc.get('funding_total_usd', doc.get('funding_usd')),
+            'last_funding_date': doc.get('last_funding_date', doc.get('lastfunding', '')),
+            'last_funding_type': doc.get('last_funding_type', ''),
+            'match_confidence': doc.get('match_confidence', 1.0),
+        }
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            page = [self._crunchbase_doc_to_company_shape(d) for d in page]
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        page = [self._crunchbase_doc_to_company_shape(d) for d in queryset]
+        serializer = self.get_serializer(page, many=True)
+        return Response(serializer.data)
+
     def get_queryset(self):
 
         filters = self.request.GET.get('filters', None)
