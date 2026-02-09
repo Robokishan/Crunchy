@@ -82,6 +82,8 @@ RB_CRUNCHBASE_CRAWL_RK = config('RB_CRUNCHBASE_CRAWL_RK', cast=str, default='cra
 RB_TRACXN_CRAWL_QUEUE = config('RB_TRACXN_CRAWL_QUEUE', cast=str, default='crawl_tracxn_queue')
 RB_TRACXN_CRAWL_RK = config('RB_TRACXN_CRAWL_RK', cast=str, default='crawl_tracxn')
 
+# Scheduler consumes from RB_CRUNCHBASE_CRAWL_QUEUE and RB_TRACXN_CRAWL_QUEUE (parallel binding applied in scheduler when CRUNCHY_CRAWL_QUEUE is set).
+
 # Databucket exchange: scraped items (Crunchbase/Tracxn) go to these queues for Django consumers
 RB_DATABUCKET_EXCHANGE = config('RB_DATABUCKET_EXCHANGE', cast=str, default='databucket_exchange')
 RB_DATABUCKET_CRUNCHBASE_RK = config('RB_DATABUCKET_CRUNCHBASE_RK', cast=str, default='crunchbase_databucket')

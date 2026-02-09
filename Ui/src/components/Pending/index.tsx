@@ -24,10 +24,10 @@ export const Pending = () => {
   return (
     <div className="flex gap-1">
       <Typography component="span" color="error">
-        Priority:
+        Crunchbase:
       </Typography>
       <Typography component="span" color="error">
-        {data?.data.priority ?? "-"}
+        {data?.data.crunchbase ?? "-"}
       </Typography>
       <Divider
         orientation="vertical"
@@ -39,10 +39,10 @@ export const Pending = () => {
         }}
       />
       <Typography component="span" color="warning">
-        Normal:
+        Tracxn:
       </Typography>
       <Typography component="span" color="warning">
-        {data?.data.normal ?? "-"}
+        {data?.data.tracxn ?? "-"}
       </Typography>
     </div>
   );

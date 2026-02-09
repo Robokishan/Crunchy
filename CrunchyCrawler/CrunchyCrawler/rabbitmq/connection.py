@@ -33,7 +33,7 @@ tracxn_channel.queue_bind(queue=tracxn_queue, exchange=crawl_exchange, routing_k
 
 
 def get_channels():
-    """Return (cb_channel, tracxn_channel) for scheduler/pipeline (main/priority)."""
+    """Return (cb_channel, tracxn_channel) for scheduler/pipeline (Crunchbase / Tracxn)."""
     logger.debug("Getting RabbitMQ Channel Instance")
     return cb_channel, tracxn_channel
 

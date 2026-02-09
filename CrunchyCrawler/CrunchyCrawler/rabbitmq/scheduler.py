@@ -1,46 +1,50 @@
-# VERY POOR SHITTY SCHEDULER NEEDS IMPROVEMENT
 from .connection import get_channels, get_internal_channel, close
-from scrapy import Request
 from scrapy.utils.misc import load_object
-from .dupefilter import RFPDupeFilter
-from scrapy_playwright.page import PageMethod
 from loguru import logger
-
-
 
 
 # default values
 SCHEDULER_PERSIST = True
-QUEUE_KEY = '%(spider)s:requests'
-SPIDER_QUEUE_CLASS = 'CrunchyCrawler.rabbitmq.queue.SpiderQueue'
-MAIN_QUEUE_CLASS = 'CrunchyCrawler.rabbitmq.queue.MainQueue'
-PRIORITY_QUEUE_CLASS = 'CrunchyCrawler.rabbitmq.queue.PriorityQueue'
-DUPEFILTER_KEY = '%(spider)s:dupefilter'
+QUEUE_KEY = "%(spider)s:requests"
+SPIDER_QUEUE_CLASS = "CrunchyCrawler.rabbitmq.queue.SpiderQueue"
+CRAWL_QUEUE_CLASS = "CrunchyCrawler.rabbitmq.queue.CrawlQueue"
+DUPEFILTER_KEY = "%(spider)s:dupefilter"
 IDLE_BEFORE_CLOSE = 0
 
 
 class Scheduler(object):
-    """ A RabbitMQ Scheduler for Scrapy.
-    """
+    """RabbitMQ Scheduler for Scrapy. Consumes from spider queue, then Tracxn crawl queue, then Crunchbase crawl queue."""
 
-    # default headers
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept-Language': 'en-US,en;q=0.9',  # this is game changing header
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
     }
 
-    def __init__(self, internal_channel, main_channel, priority_channel, persist, spider_queue_key, spider_queue_cls, main_queue_key, main_queue_cls, priority_queue_key, priority_queue_cls, dupefilter_key, idle_before_close, *args, **kwargs):
+    def __init__(
+        self,
+        internal_channel,
+        cb_channel,
+        tracxn_channel,
+        persist,
+        spider_queue_key,
+        spider_queue_cls,
+        cb_crawl_queue_key,
+        tracxn_crawl_queue_key,
+        crawl_queue_cls,
+        dupefilter_key,
+        idle_before_close,
+        *args,
+        **kwargs,
+    ):
         self.internal_channel = internal_channel
-        self.main_channel = main_channel
-        self.priority_channel = priority_channel
-        # TODO: don't know use of persist
+        self.cb_channel = cb_channel
+        self.tracxn_channel = tracxn_channel
         self.persist = persist
         self.spider_queue_key = spider_queue_key
-        self.main_queue_key = main_queue_key
+        self.cb_crawl_queue_key = cb_crawl_queue_key
+        self.tracxn_crawl_queue_key = tracxn_crawl_queue_key
         self.queue_cls = spider_queue_cls
-        self.main_queue_cls = main_queue_cls
-        self.priority_queue_cls = priority_queue_cls
-        self.priority_queue_key = priority_queue_key
+        self.crawl_queue_cls = crawl_queue_cls
         self.dupefilter_key = dupefilter_key
         self.idle_before_close = idle_before_close
         self.stats = None
@@ -53,26 +57,42 @@ class Scheduler(object):
 
     @classmethod
     def from_settings(cls, settings):
-        persist = settings.get('SCHEDULER_PERSIST', SCHEDULER_PERSIST)
-        spider_queue_key = settings.get('SCHEDULER_QUEUE_KEY', QUEUE_KEY)
-        spider_queue_cls = load_object(settings.get(
-            'SCHEDULER_QUEUE_CLASS', SPIDER_QUEUE_CLASS))
+        persist = settings.get("SCHEDULER_PERSIST", SCHEDULER_PERSIST)
+        spider_queue_key = settings.get("SCHEDULER_QUEUE_KEY", QUEUE_KEY)
+        spider_queue_cls = load_object(
+            settings.get("SCHEDULER_QUEUE_CLASS", SPIDER_QUEUE_CLASS)
+        )
+        crawl_queue_cls = load_object(
+            settings.get("SCHEDULER_CRAWL_QUEUE_CLASS", CRAWL_QUEUE_CLASS)
+        )
 
-        main_queue_key = settings.get('RB_MAIN_QUEUE')
-        main_queue_cls = load_object(settings.get(
-            'SCHEDULER_MAIN_QUEUE_CLASS', MAIN_QUEUE_CLASS))
-        
-        priority_queue_key = settings.get('RABBIT_MQ_PRIORITY_QUEUE')
-        priority_queue_cls = load_object(settings.get(
-            'SCHEDULER_PRIORITY_QUEUE_CLASS', PRIORITY_QUEUE_CLASS))
-        
+        cb_crawl_queue_key = settings.get("RB_CRUNCHBASE_CRAWL_QUEUE")
+        tracxn_crawl_queue_key = settings.get("RB_TRACXN_CRAWL_QUEUE")
+        crunchy_crawl_queue = settings.get("CRUNCHY_CRAWL_QUEUE")
+        if crunchy_crawl_queue == "crunchbase":
+            tracxn_crawl_queue_key = None
+        elif crunchy_crawl_queue == "tracxn":
+            cb_crawl_queue_key = None
 
-        dupefilter_key = settings.get('DUPEFILTER_KEY', DUPEFILTER_KEY)
+        dupefilter_key = settings.get("DUPEFILTER_KEY", DUPEFILTER_KEY)
         idle_before_close = settings.get(
-            'SCHEDULER_IDLE_BEFORE_CLOSE', IDLE_BEFORE_CLOSE)
-        main_channel, priority_channel = get_channels()
+            "SCHEDULER_IDLE_BEFORE_CLOSE", IDLE_BEFORE_CLOSE
+        )
+        cb_channel, tracxn_channel = get_channels()
         internal_channel = get_internal_channel()
-        return cls(internal_channel, main_channel, priority_channel, persist, spider_queue_key, spider_queue_cls, main_queue_key, main_queue_cls, priority_queue_key, priority_queue_cls, dupefilter_key, idle_before_close)
+        return cls(
+            internal_channel,
+            cb_channel,
+            tracxn_channel,
+            persist,
+            spider_queue_key,
+            spider_queue_cls,
+            cb_crawl_queue_key,
+            tracxn_crawl_queue_key,
+            crawl_queue_cls,
+            dupefilter_key,
+            idle_before_close,
+        )
 
     @classmethod
     def from_crawler(cls, crawler):
@@ -83,69 +103,67 @@ class Scheduler(object):
     def open(self, spider):
         self.spider = spider
 
-        self.queue = self.queue_cls(self.internal_channel, spider, self.spider_queue_key)
-        self.main_queue = self.main_queue_cls(
-            self.main_channel, spider, self.main_queue_key)
-        self.priority_queue = self.priority_queue_cls(
-            self.priority_channel, spider, self.priority_queue_key)
-        
-        # self.df = RFPDupeFilter(self.server, self.dupefilter_key % {
-        # 'spider': spider.name})
+        self.queue = self.queue_cls(
+            self.internal_channel, spider, self.spider_queue_key
+        )
+        self.cb_crawl_queue = self.crawl_queue_cls(
+            self.cb_channel, spider, self.cb_crawl_queue_key, meta_label="crunchbase"
+        )
+        self.tracxn_crawl_queue = self.crawl_queue_cls(
+            self.tracxn_channel,
+            spider,
+            self.tracxn_crawl_queue_key,
+            meta_label="tracxn",
+        )
 
         if self.idle_before_close < 0:
             self.idle_before_close = 0
 
         if len(self.queue):
-            spider.log("Resuming crawl (%d requests scheduled)" %
-                       len(self.queue))
+            spider.log("Resuming crawl (%d requests scheduled)" % len(self.queue))
 
     def close(self, reason):
-        close(self.main_channel)
-        close(self.priority_channel)
-        # if not self.persist:
-        #     # self.df.clear()
-        #     self.queue.clear()
-        #     self.main_queue.clear()
+        close(self.cb_channel)
+        close(self.tracxn_channel)
 
     def enqueue_request(self, request):
         # if not request.dont_filter and self.df.request_seen(request):
         #     return
         if self.stats:
-            self.stats.inc_value(
-                'scheduler/enqueued/rabbitmq', spider=self.spider)
+            self.stats.inc_value("scheduler/enqueued/rabbitmq", spider=self.spider)
         self.queue.push(request)
 
     def next_request(self):
-
         logger.debug("Getting new request")
-
-        # shitty logic for waiting. even though its waiting it is constantly polling on if
-        block_pop_timeout = self.idle_before_close
         request = self.queue.pop()
-        logger.info(f"From Spider queue {request} live:{self.main_channel.is_open}")
-        logger.info(f"Counter---->>> Counter:{self.counter} Threshold:{self.threshold}")
-        if request == None:
-            if self.counter >= self.threshold:
-                # after threshold is passed check for priority queue
-                # check if priority channel is connected if not throw error
-                request = self.priority_queue.pop()
-                logger.info(f"From Priority queue: {request} live:{self.priority_channel.is_open}")
-
-                # if priority queue is also empty then check main queue
-                if request == None:
-                    request = self.main_queue.pop()
-                    logger.info(f"From Main queue:{request} live:{self.main_channel.is_open}")
-                if request != None:
-                    self.counter = 0
-        logger.info(f"request --->>>> {request}")
-        # self.stats.inc_value(
-        #     'scheduler/dequeued/rabbitmq', spider=self.spider)
+        logger.info("From Spider queue {} live:{}", request, self.cb_channel.is_open)
+        logger.info(
+            "Counter---->>> Counter:{} Threshold:{}", self.counter, self.threshold
+        )
+        if request is None and self.counter >= self.threshold:
+            if self.tracxn_crawl_queue.key is not None:
+                request = self.tracxn_crawl_queue.pop()
+                logger.info(
+                    "From Tracxn crawl queue: {} live:{}",
+                    request,
+                    self.tracxn_channel.is_open,
+                )
+            if request is None and self.cb_crawl_queue.key is not None:
+                request = self.cb_crawl_queue.pop()
+                logger.info(
+                    "From Crunchbase crawl queue: {} live:{}",
+                    request,
+                    self.cb_channel.is_open,
+                )
+            if request is not None:
+                self.counter = 0
+        logger.info("request --->>>> {}", request)
         self.counter += 1
         return request
 
     def has_pending_requests(self):
-        '''
+        """
         We never want to say we have pending requests
         If this returns True scrapy sometimes hangs.
-        '''
+        """
         return False
