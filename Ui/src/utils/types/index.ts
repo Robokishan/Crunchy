@@ -5,6 +5,7 @@ export interface CompayDetail {
     funding_usd: number;
     website: string;
     crunchbase_url: string;
+    tracxn_url?: string;
     logo: string;
     founders: string[];
     similar_companies: string[];
