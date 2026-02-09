@@ -336,6 +336,28 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
         size: 500,
       },
       {
+        accessorKey: "tracxn_url",
+        header: "Tracxn",
+        Cell: ({ cell }) => (
+          <>
+            {cell.row.original.tracxn_url ? (
+              <Link
+                className="text-blue-500 underline "
+                href={cell.row.original.tracxn_url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {" "}
+                {cell.row.original.tracxn_url}{" "}
+              </Link>
+            ) : (
+              "-"
+            )}
+          </>
+        ),
+        size: 500,
+      },
+      {
         header: "Action",
         Cell: ({ cell }) => {
           const [loading, setLoading] = useState(false);
