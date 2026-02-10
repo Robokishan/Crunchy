@@ -13,6 +13,8 @@ class DetailsExtract(BaseExtract):
 
     def getValue(self, text: list):
         item = {}
+        if not text:
+            return item
         for t in text:
             x = Selector(text=t)
 
