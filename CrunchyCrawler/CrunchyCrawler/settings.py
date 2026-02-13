@@ -104,7 +104,7 @@ PLAYWRIGHT_BROWSER_TYPE = "firefox"
 # PLAYWRIGHT_PROCESS_REQUEST_HEADERS = None
 
 PLAYWRIGHT_LAUNCH_OPTIONS = {
-    "headless": False,
+    "headless": True,
     "timeout": 50 * 1000,  # 20 seconds
 }
 
