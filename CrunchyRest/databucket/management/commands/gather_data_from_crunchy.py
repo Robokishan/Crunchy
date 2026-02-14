@@ -132,6 +132,7 @@ class Command(BaseCommand):
                     defaults["rate"] = 1
                 defaults["founded"] = (tracxn.founded or "").strip() or ""
                 defaults["merged_with_tracxn"] = True
+                defaults["tracxn_url"] = (getattr(tracxn, "tracxn_url", None) or "").strip() or None
             else:
                 defaults["funding"] = ""
                 defaults["funding_usd"] = 0
