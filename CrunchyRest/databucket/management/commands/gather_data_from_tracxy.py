@@ -23,6 +23,7 @@ from utils.domain import normalize_domain
 from utils.Currency import CurrencyConverter
 import regex as re
 import pycountry
+import json
 
 
 class Command(BaseCommand):
@@ -137,6 +138,9 @@ class Command(BaseCommand):
                 tracxn_url=tracxn_url,
                 defaults=defaults
             )
+
+            # print entire data in json format
+            print(json.dumps(data, indent=4))
 
             action = "Created" if created else "Updated"
             print(f"{action}: {tracxn_record.name} ({tracxn_url})")

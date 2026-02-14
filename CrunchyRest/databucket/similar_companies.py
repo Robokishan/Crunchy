@@ -69,7 +69,7 @@ def publish_similar_companies_if_interested(
                 pass
             try:
                 RabbitMQManager.publish_tracxn_crawl(
-                    {"url": url, "entry_point": entry_point}
+                    {"url": url, "entry_point": "tracxn"}
                 )
                 print(f"  - Pushing similar company (Tracxn) to queue: {url}")
             except Exception as e:

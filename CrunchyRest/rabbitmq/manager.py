@@ -125,14 +125,14 @@ class RabbitMQManager:
 
     @classmethod
     def publish_tracxn_crawl(cls, message):
-        """Publish a crawl request to the Tracxn crawl queue (decoupled)."""
+        """Publish a crawl request to the Tracxn crawl queue (decoupled). Returns True if published, False if channel unavailable."""
         if isinstance(message, dict):
             url = message.get("url", "")
             if url and "tracxn.com" not in url:
                 raise ValueError("publish_tracxn_crawl requires a Tracxn URL")
         cls._ensure_crawl_channel()
         if cls._crawl_channel is None:
-            return
+            return False
         body = json.dumps(message) if isinstance(message, dict) else message
         cls._crawl_channel.basic_publish(
             exchange=crawl_exchange,
@@ -143,6 +143,7 @@ class RabbitMQManager:
                 content_type='application/json',
             ),
         )
+        return True
 
     @staticmethod
     def connect_to_rabbitmq():
