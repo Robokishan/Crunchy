@@ -38,27 +38,54 @@ class CompaniesListView(generics.ListAPIView):
         """Normalize a Crunchbase document (dict) to Company-shaped keys for CompanySerializer."""
         if not isinstance(doc, dict):
             return doc
+
+        funding_usd = doc.get('funding_usd')
+        if funding_usd is None:
+            funding_usd = doc.get('funding_total_usd', 0)
+
+        funding = doc.get('funding')
+        if funding is None:
+            funding = doc.get('funding_total')
+
+        lastfunding = doc.get('lastfunding')
+
         return {
             **doc,
+            'funding': funding,
+            'funding_usd': funding_usd,
+            'funding_total': doc.get('funding_total', funding),
             'funding_rounds': doc.get('funding_rounds', []),
             'sources': doc.get('sources', ['crunchbase']),
             'source_priority': doc.get('source_priority', {}),
-            'funding_total_usd': doc.get('funding_total_usd', doc.get('funding_usd')),
-            'last_funding_date': doc.get('last_funding_date', doc.get('lastfunding', '')),
-            'last_funding_type': doc.get('last_funding_type', ''),
+            'funding_total_usd': doc.get('funding_total_usd', funding_usd),
+            'lastfunding': lastfunding,
             'match_confidence': doc.get('match_confidence', 1.0),
         }
+
+    def _serialize_companies(self, companies):
+        serializer = self.get_serializer(companies, many=True)
+        # Ensure normalized funding keys are always present in API payload.
+        data = [dict(item) for item in serializer.data]
+        for idx, item in enumerate(data):
+            item.pop('last_funding_date', None)
+            item.pop('last_funding_type', None)
+            source = companies[idx] if idx < len(companies) else {}
+            if not isinstance(source, dict):
+                continue
+            item['funding'] = source.get('funding')
+            item['funding_usd'] = source.get('funding_usd')
+            item['lastfunding'] = source.get('lastfunding')
+        return data
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         page = self.paginate_queryset(queryset)
         if page is not None:
             page = [self._crunchbase_doc_to_company_shape(d) for d in page]
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+            data = self._serialize_companies(page)
+            return self.get_paginated_response(data)
         page = [self._crunchbase_doc_to_company_shape(d) for d in queryset]
-        serializer = self.get_serializer(page, many=True)
-        return Response(serializer.data)
+        return Response(self._serialize_companies(page))
 
     def get_queryset(self):
 
@@ -110,15 +137,28 @@ class CompaniesListView(generics.ListAPIView):
                             int(v) if v is not None and v != "" else None for v in filter["value"]]
                         if filter["value"][0] is not None:
                             mongo_query.append({
-                                'funding_usd': {'$gte': filter["value"][0]}
+                                '$or': [
+                                    {'funding_usd': {'$gte': filter["value"][0]}},
+                                    {'funding_total_usd': {'$gte': filter["value"][0]}},
+                                ]
                             })
 
                         if filter["value"][1] is not None:
                             mongo_query.append({
-                                'funding_usd': {'$lte': filter["value"][1]}
+                                '$or': [
+                                    {'funding_usd': {'$lte': filter["value"][1]}},
+                                    {'funding_total_usd': {'$lte': filter["value"][1]}},
+                                ]
                             })
                     except ValueError as e:
                         print(e)
+                elif filter["id"] == "funding":
+                    mongo_query.append({
+                        '$or': [
+                            {'funding': {'$regex': filter["value"], '$options': 'i'}},
+                            {'funding_total': {'$regex': filter["value"], '$options': 'i'}},
+                        ]
+                    })
             if len(mongo_query) > 0:
                 root_query['$and'] = mongo_query
 
@@ -128,7 +168,14 @@ class CompaniesListView(generics.ListAPIView):
             for sort_field in sorting:
                 field = sort_field["id"]
                 direction = -1 if sort_field.get("desc", False) else 1
-                sort.append((field, direction))
+                if field == "funding_usd":
+                    sort.append(("funding_usd", direction))
+                    sort.append(("funding_total_usd", direction))
+                elif field == "funding":
+                    sort.append(("funding", direction))
+                    sort.append(("funding_total", direction))
+                else:
+                    sort.append((field, direction))
 
         options = CodecOptions(document_class=dict)
         cursor = Crunchbase.objects.mongo_with_options(codec_options=options).find(
