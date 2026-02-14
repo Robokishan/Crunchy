@@ -31,6 +31,15 @@ tracxn_channel.exchange_declare(exchange=crawl_exchange, exchange_type='direct')
 tracxn_channel.queue_declare(queue=tracxn_queue, durable=True)
 tracxn_channel.queue_bind(queue=tracxn_queue, exchange=crawl_exchange, routing_key=tracxn_rk)
 
+# Databucket exchange: scraped items published here for CrunchyRest consumers
+databucket_exchange = settings.get('RB_DATABUCKET_EXCHANGE', 'databucket_exchange')
+databucket_channel = connection.channel(10)
+databucket_channel.exchange_declare(
+    exchange=databucket_exchange,
+    exchange_type='direct',
+    durable=True,
+)
+
 
 def get_channels():
     """Return (cb_channel, tracxn_channel) for scheduler/pipeline (Crunchbase / Tracxn)."""
@@ -40,6 +49,11 @@ def get_channels():
 
 def get_internal_channel():
     return internal_channel
+
+
+def get_databucket_channel():
+    """Return the channel for publishing scraped items to the databucket exchange."""
+    return databucket_channel
 
 
 def close(channel):
