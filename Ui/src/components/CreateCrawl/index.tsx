@@ -43,7 +43,7 @@ export default function CreateCrawl({ setModal, modalIsOpen }: Props) {
         color: isDark ? "#e2e8f0" : "#0f172a",
       } as React.CSSProperties,
       overlay: {
-        zIndex: 50,
+        zIndex: 10000,
         position: "fixed" as const,
         top: 0,
         left: 0,

@@ -5,10 +5,22 @@
 @layer base {
   html {
     @apply scroll-smooth;
+    scrollbar-gutter: stable;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
 
   body {
     @apply font-sans antialiased;
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  /* Prevent any horizontal overflow from root */
+  #root {
+    max-width: 100vw;
+    overflow-x: hidden;
+    box-sizing: border-box;
   }
 
   /* After React mounts: light theme */

@@ -74,9 +74,12 @@ export const Settings = () => {
   }, [data?.data.interested_industries]);
 
   return (
-    <div className="card-base mx-4 mb-6 mt-6 w-full max-w-6xl sm:mx-6 md:mx-auto">
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="page-title">Settings</h1>
+    <div
+      className="card-base mb-6 mt-4 w-full max-w-6xl box-border md:mx-auto"
+      style={{ minWidth: 0, maxWidth: "min(100%, 72rem)", overflowX: "clip", boxSizing: "border-box" }}
+    >
+      <div className="flex min-w-0 flex-wrap items-center gap-3">
+        <h1 className="page-title text-lg sm:text-xl">Settings</h1>
         <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300">
           <Switch
             checked={settingsView === "list"}
@@ -94,12 +97,12 @@ export const Settings = () => {
         <p className="text-slate-600 dark:text-slate-300">Loading...</p>
       ) : settingsView === "list" ? (
         <>
-          <Grid2 container>
-            <Grid2 size={4}>
+          <Grid2 container spacing={2} sx={{ minWidth: 0 }}>
+            <Grid2 size={{ xs: 12, md: 4 }} sx={{ minWidth: 0 }}>
               <List
                 sx={{
                   width: "100%",
-                  maxWidth: 360,
+                  maxWidth: "100%",
                   bgcolor: "background.paper",
                   borderRadius: 2,
                   border: "1px solid",
@@ -132,9 +135,8 @@ export const Settings = () => {
                 })}
               </List>
             </Grid2>
-            {/* vertical straight line */}
 
-            <Grid2>
+            <Grid2 size={{ xs: 12 }} sx={{ minWidth: 0 }}>
               <Button
                 variant="contained"
                 onClick={() => save()}
@@ -151,11 +153,11 @@ export const Settings = () => {
               </Button>
             </Grid2>
 
-            <Grid2 size={4}>
+            <Grid2 size={{ xs: 12, md: 4 }} sx={{ minWidth: 0 }}>
               <List
                 sx={{
                   width: "100%",
-                  maxWidth: 360,
+                  maxWidth: "100%",
                   bgcolor: "background.paper",
                   borderRadius: 2,
                   border: "1px solid",
@@ -191,23 +193,23 @@ export const Settings = () => {
           </Grid2>
         </>
       ) : settingsView === "text" ? (
-        <Grid2 container spacing={3}>
-          <Grid2 size={6}>
+        <Grid2 container spacing={3} sx={{ minWidth: 0 }}>
+          <Grid2 size={{ xs: 12, md: 6 }} sx={{ minWidth: 0 }}>
             <TextareaAutosize
               maxRows={50}
               name="name"
               placeholder="Industries JSON"
               value={JSON.stringify(data?.data.industries, null, 2)}
-              className="input-base min-h-[200px] font-mono text-sm"
+              className="input-base min-h-[200px] min-w-0 max-w-full w-full font-mono text-sm"
             />
-          </Grid2>
-          <Grid2 size={6}>
+            </Grid2>
+          <Grid2 size={{ xs: 12, md: 6 }} sx={{ minWidth: 0 }}>
             <TextareaAutosize
               maxRows={50}
               name="name"
               placeholder="Interested industries JSON"
               value={JSON.stringify(data?.data.interested_industries, null, 2)}
-              className="input-base min-h-[200px] font-mono text-sm"
+              className="input-base min-h-[200px] min-w-0 max-w-full w-full font-mono text-sm"
             />
           </Grid2>
         </Grid2>

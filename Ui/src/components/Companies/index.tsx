@@ -35,6 +35,11 @@ import CreateCrawl from "../CreateCrawl";
 import ExportToNotion from "../ExportNotionModal";
 import { Pending } from "../Pending";
 import useIndustryList, { Industry } from "~/hooks/industryList";
+import { useIsMobile } from "~/hooks/useIsMobile";
+import { useHeaderScroll } from "~/contexts/HeaderScrollContext";
+import { CompanyCard } from "./CompanyCard";
+import { CompanyDetailModal } from "./CompanyDetailModal";
+import { MobileFilters } from "./MobileFilters";
 
 type UserApiResponse = {
   results: Array<CompayDetail>;
@@ -46,12 +51,18 @@ type UserApiResponse = {
 type IndustryOptionSortBy = "industryCount" | "alphabetical" | "default";
 
 export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
+  const isMobile = useIsMobile();
+  const { headerHidden, setHeaderHidden, scrollContainerRef } = useHeaderScroll();
   const tableContainerRef = useRef<HTMLDivElement>(null); //we can get access to the underlying TableContainer element and react to its scroll events
+  const mobileCardsContainerRef = useRef<HTMLDivElement>(null);
+  const cardsSentinelRef = useRef<HTMLDivElement>(null);
+  const touchStartYRef = useRef<number>(0);
   const rowVirtualizerInstanceRef =
     useRef<MRT_RowVirtualizer<HTMLDivElement, HTMLTableRowElement>>(null);
   const [modalIsOpen, setModal] = useState(false);
   const [crawlModalIsOpen, setOpenCrawlModal] = useState(false);
   const [modalData, setModalData] = useState();
+  const [detailModalCompany, setDetailModalCompany] = useState<CompayDetail | null>(null);
   const [columnFilters, setColumnFilters] = useState<MRT_ColumnFiltersState>(
     []
   );
@@ -69,6 +80,20 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
     () => columnFilters.find((f) => f.id === "industries")?.value as string[],
     [columnFilters]
   );
+
+  const fundingUsdRange = useMemo(() => {
+    const v = columnFilters.find((f) => f.id === "funding_usd")?.value;
+    if (Array.isArray(v) && v.length >= 2) return [v[0] as number | undefined, v[1] as number | undefined] as const;
+    return [undefined, undefined] as const;
+  }, [columnFilters]);
+
+  const setFundingUsdFilter = useCallback((min: number | undefined, max: number | undefined) => {
+    setColumnFilters((prev) => {
+      const rest = prev.filter((f) => f.id !== "funding_usd");
+      if (min == null && max == null) return rest;
+      return [...rest, { id: "funding_usd", value: [min ?? undefined, max ?? undefined] }];
+    });
+  }, []);
 
   const filterIndustry = useIndustryList(
     industries,
@@ -130,6 +155,59 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
     },
     [fetchNextPage, isFetching, totalFetched, totalDBRowCount]
   );
+
+  // When card list is at top and user scrolls up (swipe down), propagate to outer so filters/header come back
+  useEffect(() => {
+    if (!isMobile) return;
+    const inner = mobileCardsContainerRef.current;
+    if (!inner) return;
+    const onTouchStart = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (t) touchStartYRef.current = t.clientY;
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      const t = e.touches[0];
+      const outer = scrollContainerRef.current;
+      if (!t || !outer || inner.scrollTop > 0) return;
+      const dy = t.clientY - touchStartYRef.current;
+      if (dy <= 0) return;
+      outer.scrollTop -= dy;
+      touchStartYRef.current = t.clientY;
+      e.preventDefault();
+    };
+    const onWheel = (e: WheelEvent) => {
+      const outer = scrollContainerRef.current;
+      if (!outer || inner.scrollTop > 0) return;
+      if (e.deltaY >= 0) return;
+      outer.scrollTop += e.deltaY;
+      e.preventDefault();
+    };
+    inner.addEventListener("touchstart", onTouchStart, { passive: true });
+    inner.addEventListener("touchmove", onTouchMove, { passive: false });
+    inner.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      inner.removeEventListener("touchstart", onTouchStart);
+      inner.removeEventListener("touchmove", onTouchMove);
+      inner.removeEventListener("wheel", onWheel);
+    };
+  }, [isMobile]);
+
+  const setIndustriesFilter = useCallback((industryList: string[]) => {
+    setColumnFilters((prev) => {
+      const rest = prev.filter((f) => f.id !== "industries");
+      if (industryList.length === 0) return rest;
+      return [...rest, { id: "industries", value: industryList }];
+    });
+  }, []);
+
+  const activeFilterCount = useMemo(() => {
+    let n = 0;
+    if (selectedIndustry?.length) n += selectedIndustry.length;
+    if (globalFilter?.trim()) n += 1;
+    const [min, max] = fundingUsdRange;
+    if (min != null || max != null) n += 1;
+    return n;
+  }, [selectedIndustry, globalFilter, fundingUsdRange]);
 
   //scroll to top of table when sorting or filters change
   useEffect(() => {
@@ -551,58 +629,211 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
     rowVirtualizerOptions: { overscan: 4 },
   });
 
+  const HEADER_HEIGHT_PX = 56;
+
+  // When cards section reaches top (filter scrolled away), hide header so cards get full view
+  useEffect(() => {
+    if (!isMobile || !scrollContainerRef.current || !cardsSentinelRef.current) return;
+    const root = scrollContainerRef.current;
+    const sentinel = cardsSentinelRef.current;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const e = entries[0];
+        if (!e) return;
+        setHeaderHidden(!e.isIntersecting);
+      },
+      { root, rootMargin: "0px", threshold: 0 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [isMobile, setHeaderHidden]);
+
+  useEffect(() => {
+    if (!isMobile) setHeaderHidden(false);
+    return () => setHeaderHidden(false);
+  }, [isMobile, setHeaderHidden]);
+
   return (
-    <div className="card-base mx-4 mb-6 mt-6 w-full max-w-[1600px] sm:mx-6 md:mx-auto">
-      <div className="flex flex-wrap items-center gap-4">
-        <h1 className="page-title">Company Details</h1>
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700 dark:bg-slate-600 dark:text-slate-200">
-          {totalDBRowCount}
-        </span>
-        <Button
-          onClick={() => setOpenCrawlModal(true)}
-          variant="contained"
-          color="primary"
-          sx={{
-            textTransform: "none",
-            fontWeight: 600,
-            borderRadius: 2,
-            px: 2.5,
-            py: 1.25,
-            boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+    <div
+      className={`mb-6 mt-4 w-full max-w-[1600px] min-w-0 md:mx-auto md:mt-6 ${isMobile ? "overflow-visible" : "overflow-x-clip"}`}
+    >
+      {!isMobile && (
+        <>
+          <div className="mb-2 flex min-w-0 flex-wrap items-center gap-3 md:gap-4">
+            <h1 className="page-title text-lg sm:text-xl">Company Details</h1>
+            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-sm font-semibold text-slate-700 dark:bg-slate-600 dark:text-slate-200">
+              {totalDBRowCount}
+            </span>
+            <Button
+              onClick={() => setOpenCrawlModal(true)}
+              variant="contained"
+              color="primary"
+              size="medium"
+              sx={{
+                textTransform: "none",
+                fontWeight: 600,
+                borderRadius: 2,
+                px: 2,
+                py: 1,
+                boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+              }}
+            >
+              Create Crawl
+            </Button>
+            <FormControl size="small" sx={{ minWidth: 160 }}>
+              <InputLabel id="industry-sort-by-label">Industry Sort By</InputLabel>
+              <Select
+                labelId="industry-sort-by-label"
+                id="industry-sort-by-select"
+                value={industryOptionSortBy}
+                label="Industry Sort By"
+                onChange={(e) =>
+                  setIndustryOptionSortBy(e.target.value as IndustryOptionSortBy)
+                }
+                sx={{ borderRadius: 2 }}
+              >
+                <MenuItem value="default">Default</MenuItem>
+                <MenuItem value="alphabetical">Alphabetical</MenuItem>
+                <MenuItem value="industryCount">Industry Count</MenuItem>
+              </Select>
+            </FormControl>
+            {isLoading && (
+              <span className="relative flex h-3 w-3" aria-hidden>
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-400 opacity-75" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-brand-500" />
+              </span>
+            )}
+          </div>
+          <div className="mb-2">
+            <Pending />
+          </div>
+        </>
+      )}
+
+      {isMobile ? (
+        /* Level 1: outer scroll – header/filter chrome; Level 2: card container has its own scroll */
+        <div
+          ref={scrollContainerRef}
+          className="fixed left-0 right-0 z-0 overflow-x-hidden overflow-y-auto overscroll-contain bg-[#f8fafc] dark:bg-[#0f172a] transition-[top,height] duration-200 ease-out"
+          style={{
+            top: headerHidden ? 0 : HEADER_HEIGHT_PX,
+            height: headerHidden ? "100vh" : `calc(100vh - ${HEADER_HEIGHT_PX}px)`,
           }}
+          role="main"
+          aria-label="Company list"
         >
-          Create Crawl
-        </Button>
-        <FormControl size="small" sx={{ minWidth: 160 }}>
-          <InputLabel id="industry-sort-by-label">Industry Sort By</InputLabel>
-          <Select
-            labelId="industry-sort-by-label"
-            id="industry-sort-by-select"
-            value={industryOptionSortBy}
-            label="Industry Sort By"
-            onChange={(e) =>
-              setIndustryOptionSortBy(e.target.value as IndustryOptionSortBy)
-            }
-            sx={{ borderRadius: 2 }}
+          {/* Chrome: title, pending, filter – scrolls away with outer */}
+          <div className="min-w-0 px-4 pt-4 pb-4">
+            <div className="mb-2 flex min-w-0 flex-wrap items-center gap-3">
+              <h1 className="page-title text-lg sm:text-xl">Company Details</h1>
+              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-sm font-semibold text-slate-700 dark:bg-slate-600 dark:text-slate-200">
+                {totalDBRowCount}
+              </span>
+              <Button
+                onClick={() => setOpenCrawlModal(true)}
+                variant="contained"
+                color="primary"
+                size="medium"
+                sx={{
+                  textTransform: "none",
+                  fontWeight: 600,
+                  borderRadius: 2,
+                  px: 2,
+                  py: 1,
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                }}
+              >
+                Create Crawl
+              </Button>
+              {isLoading && (
+                <span className="relative flex h-3 w-3" aria-hidden>
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-400 opacity-75" />
+                  <span className="relative inline-flex h-3 w-3 rounded-full bg-brand-500" />
+                </span>
+              )}
+            </div>
+            <div className="mb-2">
+              <Pending />
+            </div>
+            <div className="mt-4">
+              <MobileFilters
+                search={globalFilter ?? ""}
+                onSearchChange={setGlobalFilter}
+                sorting={sorting}
+                onSortingChange={setSorting}
+                industryOptions={filterIndustry}
+                selectedIndustries={selectedIndustry ?? []}
+                onIndustriesChange={setIndustriesFilter}
+                industryOptionSortBy={industryOptionSortBy}
+                onIndustryOptionSortByChange={setIndustryOptionSortBy}
+                fundingUsdMin={fundingUsdRange[0]}
+                fundingUsdMax={fundingUsdRange[1]}
+                onFundingUsdChange={setFundingUsdFilter}
+                totalCount={totalDBRowCount}
+                activeFilterCount={activeFilterCount}
+              />
+            </div>
+          </div>
+          <div ref={cardsSentinelRef} className="h-0 w-full shrink-0" aria-hidden />
+          {/* Level 2: card root container – own scroll, fills viewport when chrome is scrolled away */}
+          <div
+            ref={mobileCardsContainerRef}
+            className="min-h-0 shrink-0 overflow-x-hidden overflow-y-auto overscroll-contain bg-[#f8fafc] dark:bg-[#0f172a]"
+            style={{
+              height: headerHidden ? "100vh" : `calc(100vh - ${HEADER_HEIGHT_PX}px)`,
+            }}
+            onScroll={(e) => fetchMoreOnBottomReached(e.currentTarget)}
+            aria-label="Company cards"
           >
-            <MenuItem value="default">Default</MenuItem>
-            <MenuItem value="alphabetical">Alphabetical</MenuItem>
-            <MenuItem value="industryCount">Industry Count</MenuItem>
-          </Select>
-        </FormControl>
-        {isLoading && (
-          <span className="relative flex h-3 w-3" aria-hidden>
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-400 opacity-75" />
-            <span className="relative inline-flex h-3 w-3 rounded-full bg-brand-500" />
-          </span>
-        )}
-      </div>
-      <Pending />
-      <hr className="my-4 border-0 bg-slate-200 dark:bg-slate-600" style={{ height: 1 }} />
-
-      {/* <SearchInput onSearch={onSearch} /> */}
-
-      <MaterialReactTable table={table} />
+            <div className="min-w-0 px-4 pb-6 pt-2">
+              {isLoading ? (
+                <div className="flex w-full min-w-0 max-w-full flex-col gap-3">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div
+                      key={i}
+                      className="h-24 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-700"
+                    />
+                  ))}
+                </div>
+              ) : isError ? (
+                <p className="rounded-xl bg-red-50 p-4 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-300">
+                  Error loading data
+                </p>
+              ) : (
+                <div className="flex w-full min-w-0 max-w-full flex-col gap-3">
+                  {flatData.map((company) => (
+                    <CompanyCard
+                      key={company._id}
+                      company={company}
+                      onExport={openExportModal}
+                      onCardClick={(c) => setDetailModalCompany(c)}
+                    />
+                  ))}
+                  {isFetching && totalFetched > 0 && (
+                    <div className="flex justify-center py-4">
+                      <span className="text-sm text-slate-500 dark:text-slate-400">
+                        Loading more…
+                      </span>
+                    </div>
+                  )}
+                  {totalFetched > 0 && totalFetched >= totalDBRowCount && (
+                    <p className="py-2 text-center text-xs text-slate-500 dark:text-slate-400">
+                      Fetched {totalFetched} of {totalDBRowCount} companies.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          <hr className="my-4 border-0 bg-slate-200 dark:bg-slate-600" style={{ height: 1 }} />
+          <div className="card-base p-0 overflow-hidden">
+            <MaterialReactTable table={table} />
+          </div>
+        </>
+      )}
 
       {modalIsOpen === true && (
         <ExportToNotion
@@ -617,6 +848,11 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
           setModal={setOpenCrawlModal}
         />
       )}
+      <CompanyDetailModal
+        company={detailModalCompany}
+        isOpen={detailModalCompany != null}
+        onClose={() => setDetailModalCompany(null)}
+      />
     </div>
   );
 };

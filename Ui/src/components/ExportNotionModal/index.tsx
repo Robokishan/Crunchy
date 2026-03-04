@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Modal from "react-modal";
 import { toast } from "react-toastify";
 import { useThemeMode } from "~/contexts/ThemeContext";
+import { useIsMobile } from "~/hooks/useIsMobile";
 
 type Props = {
   setModal: (openModal: boolean) => void;
@@ -34,6 +35,7 @@ export default function ExportToNotion({
   modalData,
 }: Props) {
   const { effectiveTheme } = useThemeMode();
+  const isMobile = useIsMobile();
   const isDark = effectiveTheme === "dark";
 
   const customStyles = useMemo(
@@ -42,24 +44,25 @@ export default function ExportToNotion({
         boxShadow: isDark
           ? "0 25px 50px -12px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.06)"
           : "0 25px 50px -12px rgb(0 0 0 / 0.15), 0 0 0 1px rgb(0 0 0 / 0.05)",
-        width: "42%",
+        width: isMobile ? "calc(100vw - 1rem)" : "42%",
         border: "none",
-        minWidth: "420px",
-        maxWidth: "560px",
-        top: "50%",
+        minWidth: isMobile ? 0 : "420px",
+        maxWidth: isMobile ? "calc(100vw - 1rem)" : "560px",
+        top: isMobile ? "52%" : "50%",
         left: "50%",
         right: "auto",
         bottom: "auto",
-        maxHeight: "calc(100vh - 12rem)",
+        maxHeight: isMobile ? "calc(100vh - 5rem)" : "calc(100vh - 12rem)",
         marginRight: "-50%",
         transform: "translate(-50%, -50%)",
         borderRadius: "16px",
-        padding: "32px 40px 24px",
+        padding: isMobile ? "24px 20px 20px" : "32px 40px 24px",
         backgroundColor: isDark ? "#1e293b" : "#fff",
         color: isDark ? "#e2e8f0" : "#0f172a",
+        overflowY: "auto" as const,
       } as React.CSSProperties,
       overlay: {
-        zIndex: 50,
+        zIndex: 10000,
         position: "fixed" as const,
         top: 0,
         left: 0,
@@ -69,7 +72,7 @@ export default function ExportToNotion({
         backdropFilter: "blur(4px)",
       } as React.CSSProperties,
     }),
-    [isDark]
+    [isDark, isMobile]
   );
 
   const [isLoading, setLoader] = useState(false);
@@ -129,22 +132,22 @@ export default function ExportToNotion({
             <XMarkIcon className="h-6 w-6" />
           </button>
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <input name="name" placeholder="Name" value={notionData?.name} className="input-base" onChange={(e) => update(e.target.name, e.target.value)} />
-          <input name="crunchbaseUrl" placeholder="Crunchbase URL" value={notionData?.crunchbaseUrl} className="input-base" onChange={(e) => update(e.target.name, e.target.value)} />
-          <input name="website" placeholder="Website" value={notionData?.website} className="input-base" onChange={(e) => update(e.target.name, e.target.value)} />
-          <input name="funding" placeholder="Funding" value={notionData?.funding} className="input-base" onChange={(e) => update(e.target.name, e.target.value)} />
-          <input name="iconUrl" placeholder="Logo URL" value={notionData?.iconUrl} className="input-base" onChange={(e) => update(e.target.name, e.target.value)} />
-          <div className="flex items-center justify-center">
+        <div className={`mt-4 grid gap-3 ${isMobile ? "grid-cols-1" : "grid-cols-2"}`}>
+          <input name="name" placeholder="Name" value={notionData?.name} className="input-base min-w-0" onChange={(e) => update(e.target.name, e.target.value)} />
+          <input name="crunchbaseUrl" placeholder="Crunchbase URL" value={notionData?.crunchbaseUrl} className="input-base min-w-0 break-all" onChange={(e) => update(e.target.name, e.target.value)} />
+          <input name="website" placeholder="Website" value={notionData?.website} className="input-base min-w-0 break-all" onChange={(e) => update(e.target.name, e.target.value)} />
+          <input name="funding" placeholder="Funding" value={notionData?.funding} className="input-base min-w-0" onChange={(e) => update(e.target.name, e.target.value)} />
+          <input name="iconUrl" placeholder="Logo URL" value={notionData?.iconUrl} className="input-base min-w-0 break-all" onChange={(e) => update(e.target.name, e.target.value)} />
+          <div className={`flex items-center justify-center ${isMobile ? "" : "md:col-span-1"}`}>
             {notionData?.iconUrl ? (
-              <img src={notionData.iconUrl} alt="Company" width={40} height={40} className="h-10 w-10 rounded-input object-contain bg-slate-100 dark:bg-slate-700" />
+              <img src={notionData.iconUrl} alt="Company" width={48} height={48} className="h-12 w-12 shrink-0 rounded-input object-contain bg-slate-100 dark:bg-slate-700" />
             ) : (
               <span className="text-sm text-slate-400">No logo</span>
             )}
           </div>
-          <input name="acquired" placeholder="Acquired" value={notionData?.acquired} className="input-base" onChange={(e) => update(e.target.name, e.target.value)} />
-          <input name="description" placeholder="Description" value={notionData?.description} className="input-base col-span-2" onChange={(e) => update(e.target.name, e.target.value)} />
-          <input name="lastfunding" placeholder="Last Fund" value={notionData?.lastfunding} className="input-base" onChange={(e) => update(e.target.name, e.target.value)} />
+          <input name="acquired" placeholder="Acquired" value={notionData?.acquired} className="input-base min-w-0" onChange={(e) => update(e.target.name, e.target.value)} />
+          <textarea name="description" placeholder="Description" value={notionData?.description ?? ""} rows={3} className={`input-base min-w-0 resize-y break-words ${isMobile ? "" : "col-span-2"}`} onChange={(e) => update(e.target.name, e.target.value)} />
+          <input name="lastfunding" placeholder="Last Fund" value={notionData?.lastfunding} className="input-base min-w-0" onChange={(e) => update(e.target.name, e.target.value)} />
         </div>
         <div className="mt-6 flex flex-wrap justify-end gap-3">
           <button type="button" className="btn-secondary" onClick={() => setModal(false)}>

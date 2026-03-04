@@ -12,9 +12,13 @@ import MenuItem from "@mui/material/MenuItem";
 import Toolbar from "@mui/material/Toolbar";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import { useTheme } from "@mui/material/styles";
 import { Link, useLocation } from "react-router-dom";
 import * as React from "react";
+import { useCallback } from "react";
 import { useThemeMode } from "~/contexts/ThemeContext";
+import { useHeaderScroll } from "~/contexts/HeaderScrollContext";
 
 const pages = [
   {
@@ -32,8 +36,40 @@ const pages = [
 ];
 
 function ResponsiveAppBar() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const { mode, setMode } = useThemeMode();
+  const { headerHidden, scrollContainerRef } = useHeaderScroll();
   const location = useLocation();
+  const isHome = location.pathname === "/";
+  const hideHeader = isHome && headerHidden;
+
+  const scrollChromeIntoView = useCallback(() => {
+    if (!isHome || !isMobile) return;
+    const el = scrollContainerRef.current;
+    if (el) {
+      el.scrollTop = 0;
+      el.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [isHome, isMobile, scrollContainerRef]);
+
+  const tryScrollChrome = useCallback(
+    (e: React.MouseEvent | React.TouchEvent) => {
+      if (!isHome || !isMobile) return;
+      const target = e.target as HTMLElement;
+      if (target.closest("button, a, [role='button'], input")) return;
+      scrollChromeIntoView();
+    },
+    [isHome, isMobile, scrollChromeIntoView]
+  );
+  const handleAppBarClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => tryScrollChrome(e),
+    [tryScrollChrome]
+  );
+  const handleAppBarTouchEnd = useCallback(
+    (e: React.TouchEvent<HTMLDivElement>) => tryScrollChrome(e),
+    [tryScrollChrome]
+  );
   const [anchorElNav, setAnchorElNav] = React.useState<null | HTMLElement>(
     null
   );
@@ -61,16 +97,29 @@ function ResponsiveAppBar() {
 
   return (
     <AppBar
-      position="static"
+      position="sticky"
       elevation={0}
+      onClick={handleAppBarClick}
+      onTouchEnd={handleAppBarTouchEnd}
       sx={{
+        top: 0,
+        left: 0,
+        right: 0,
+        minWidth: 0,
+        maxWidth: "100vw",
+        width: "100%",
+        zIndex: 9999,
         background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%)",
         borderBottom: "1px solid rgba(255,255,255,0.08)",
+        transform: hideHeader ? "translateY(-100%)" : "none",
+        transition: "transform 0.2s ease-out",
+        pointerEvents: hideHeader ? "none" : "auto",
       }}
     >
-      <Container maxWidth="xl">
-        <Toolbar disableGutters sx={{ minHeight: { xs: 56, md: 64 }, px: { xs: 1, sm: 2 } }}>
-          <Box sx={{ flexGrow: 1, display: { xs: "flex", md: "none" } }}>
+      <Container maxWidth="xl" sx={{ minWidth: 0, maxWidth: "100%", width: "100%" }}>
+        <Toolbar disableGutters sx={{ minHeight: { xs: 56, md: 64 }, px: { xs: 1, sm: 2 }, minWidth: 0 }}>
+          {/* On mobile: no flexGrow so the tappable blank Box gets the middle; on desktop this is hidden */}
+          <Box sx={{ flexGrow: { xs: 0, md: 0 }, display: { xs: "flex", md: "none" } }}>
             <IconButton
               size="large"
               aria-label="Open menu"
@@ -93,6 +142,7 @@ function ResponsiveAppBar() {
               transformOrigin={{ vertical: "top", horizontal: "left" }}
               open={Boolean(anchorElNav)}
               onClose={handleCloseNavMenu}
+              disableScrollLock
               sx={{
                 display: { xs: "block", md: "none" },
                 "& .MuiPaper-root": { borderRadius: 2, mt: 1.5, minWidth: 180 },
@@ -116,6 +166,20 @@ function ResponsiveAppBar() {
               </MenuItem>
             </Menu>
           </Box>
+
+          {/* Spacer so theme icons stay right; tap handled by AppBar onClick */}
+          {isMobile && (
+            <Box
+              sx={{
+                flex: 1,
+                minWidth: 0,
+                minHeight: "100%",
+                cursor: isHome ? "pointer" : "default",
+                display: { xs: "block", md: "none" },
+              }}
+              aria-hidden
+            />
+          )}
 
           <Box sx={{ flexGrow: 1, display: { xs: "none", md: "flex" }, alignItems: "center", gap: 0.5 }}>
             {pages.map(({ name, href }) => (
