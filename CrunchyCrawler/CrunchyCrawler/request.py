@@ -64,11 +64,18 @@ def generateRequest(url, delivery_tag, queue="normal", callback=None, previousRe
             PageMethod("wait_for_timeout", 3500),  # wait for Angular to expand and render full text
         ]
         meta["download_timeout"] = CLOUDFLARE_DOWNLOAD_TIMEOUT
+        meta["playwright_navigation_timeout"] = CLOUDFLARE_DOWNLOAD_TIMEOUT * 1000  # ms
         # Allow Cloudflare challenge pages (403/503) to reach spider so we can call FlareSolverr
         meta["handle_httpstatus_list"] = [403, 503]
     else:
+        # Tracxn (and any other non-Crunchbase): bounded timeouts so stuck pages don't block the crawler
         meta["download_timeout"] = DEFAULT_DOWNLOAD_TIMEOUT
-    
+        meta["playwright_navigation_timeout"] = DEFAULT_DOWNLOAD_TIMEOUT * 1000  # 60s in ms
+        # Explicit timeout on load state so we never wait forever (e.g. infinite spinner, block page)
+        meta["playwright_page_methods"] = [
+            PageMethod("wait_for_load_state", "domcontentloaded", timeout=50_000),  # 50s
+        ]
+
     return Request(
         url,
         headers=headers,

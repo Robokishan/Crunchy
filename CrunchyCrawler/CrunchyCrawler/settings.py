@@ -105,8 +105,11 @@ PLAYWRIGHT_BROWSER_TYPE = "firefox"
 
 PLAYWRIGHT_LAUNCH_OPTIONS = {
     "headless": True,
-    "timeout": 50 * 1000,  # 20 seconds
+    "timeout": 50 * 1000,  # 50 seconds for browser launch
 }
+
+# Prevent Playwright from waiting forever on navigation / load state (e.g. Tracxn stuck pages)
+PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT = 60 * 1000  # 60 seconds, milliseconds
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 # USER_AGENT = "CrunchyCrawler (+http://www.yourdomain.com)"
