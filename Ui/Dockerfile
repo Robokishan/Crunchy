@@ -15,7 +15,8 @@ COPY --from=deps /opt/app/node_modules ./node_modules
 
 ENV NODE_ENV=production
 # Vite build (frontend) + TypeScript compile (server to JS)
-RUN pnpm vite build && pnpm build:server
+# Remove dist-server so tsc always does a full emit (avoids incremental empty output)
+RUN pnpm vite build && rm -rf dist-server && pnpm build:server
 
 FROM node:24.11.0-alpine AS runner
 WORKDIR /opt/app
