@@ -14,6 +14,7 @@ import {
   MaterialReactTable,
   type MRT_ColumnDef,
   MRT_ColumnFiltersState,
+  type MRT_ExpandedState,
   type MRT_RowVirtualizer,
   MRT_SortingState,
   useMaterialReactTable,
@@ -29,6 +30,12 @@ import {
 import toast from "react-hot-toast";
 import { isUrl } from "~/utils";
 import crunchyClient from "~/utils/crunchyClient";
+import {
+  detailKeyToLabel,
+  formatDetailValue,
+  getSortedDetailEntries,
+  isMetadataDetailKey,
+} from "./detailFields";
 import { type CompayDetail } from "~/utils/types";
 import { getBaseURL } from "../../utils/baseUrl";
 import CreateCrawl from "../CreateCrawl";
@@ -75,6 +82,9 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
   ]);
   const [industryOptionSortBy, setIndustryOptionSortBy] =
     useState<IndustryOptionSortBy>("default");
+  const [expanded, setExpanded] = useState<MRT_ExpandedState>({});
+  const [tableContainerHeight, setTableContainerHeight] =
+    useState<string>("80vh");
 
   const selectedIndustry = useMemo(
     () => columnFilters.find((f) => f.id === "industries")?.value as string[],
@@ -223,6 +233,23 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
   useEffect(() => {
     fetchMoreOnBottomReached(tableContainerRef.current);
   }, [fetchMoreOnBottomReached]);
+
+  // Shrink table container when content is smaller than 80vh to remove the huge gap (desktop)
+  useEffect(() => {
+    if (isMobile) return;
+    const rafId = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const total = rowVirtualizerInstanceRef.current?.getTotalSize?.();
+        if (typeof total === "number" && total > 0) {
+          const maxVh = window.innerHeight * 0.8;
+          setTableContainerHeight(total < maxVh ? `${Math.ceil(total)}px` : "80vh");
+        } else {
+          setTableContainerHeight("80vh");
+        }
+      });
+    });
+    return () => cancelAnimationFrame(rafId);
+  }, [isMobile, flatData.length, expanded]);
 
   const columns = useMemo<MRT_ColumnDef<CompayDetail>[]>(
     () => [
@@ -518,10 +545,16 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
     enableColumnPinning: true,
     muiTableContainerProps: {
       ref: tableContainerRef,
-      sx: { maxHeight: "80vh", borderRadius: 2 },
+      sx: {
+        maxHeight: "80vh",
+        height: tableContainerHeight,
+        borderRadius: 2,
+      },
       onScroll: (event: UIEvent<HTMLDivElement>) =>
         fetchMoreOnBottomReached(event.target as HTMLDivElement),
     },
+    onExpandedChange: (updater) =>
+      setExpanded((prev) => (typeof updater === "function" ? updater(prev) : updater)),
     muiToolbarAlertBannerProps: isError
       ? {
         color: "error",
@@ -532,83 +565,71 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
     onGlobalFilterChange: setGlobalFilter,
     onSortingChange: setSorting,
     enableExpandAll: false,
+    muiDetailPanelProps: () => ({
+      sx: {
+        py: 0,
+        verticalAlign: "top",
+        width: "100%",
+        maxWidth: "100%",
+        overflow: "hidden",
+      },
+    }),
     renderDetailPanel: ({ row }) => {
-      return (
-        <div className="grid w-full grid-cols-2 gap-4 rounded-panel border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-600 dark:bg-slate-800/50">
-          <div className="flex h-32 w-32 items-center">
-            <a
-              href={row.original?.logo || "/image-broken.png"}
-              target="_blank"
-              rel="noopener noreferrer"
+      const c = row.original as unknown as Record<string, unknown>;
+      const entries = getSortedDetailEntries(c);
+      const useful = entries.filter((e) => !isMetadataDetailKey(e.key));
+      const rest = entries.filter((e) => isMetadataDetailKey(e.key));
+      const renderField = ({ key, value }: { key: string; value: unknown }, index: number) => {
+        const isLongText = key === "long_description" || key === "description";
+        return (
+          <div
+            key={`${row.original._id}-${key}-${index}`}
+            className="flex min-w-0 flex-col gap-0.5"
+          >
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              {detailKeyToLabel(key)}:
+            </span>
+            <span
+              className={
+                isLongText
+                  ? "max-w-prose min-w-0 overflow-hidden break-words text-sm text-slate-800 dark:text-slate-200"
+                  : "min-w-0 overflow-hidden break-words break-all text-sm text-slate-800 dark:text-slate-200"
+              }
             >
-              <img
-                src={row.original?.logo || "/image-broken.png"}
-                alt="company-icon"
-                loading="lazy"
-                width={100}
-                height={100}
-                className="h-[100px] w-[100px] object-contain"
-              />
-            </a>
+              {formatDetailValue(value)}
+            </span>
           </div>
-          {Object.entries(row.original).map(([key, value], index) => {
-            return (
-              <div
-                key={`${row.original._id}-${index}-expand`}
-                className="flex flex-col"
+        );
+      };
+      return (
+        <div className="w-full min-w-0 rounded-lg border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100/80 p-4 dark:border-slate-600 dark:from-slate-800/80 dark:to-slate-900/80">
+          <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
+            <div className="flex h-32 w-32 shrink-0 items-center">
+              <a
+                href={(c.logo as string) || "/image-broken.png"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-600 dark:bg-slate-800"
               >
-                <span className="text-sm font-medium capitalize text-slate-500 dark:text-slate-400">
-                  {key}:
-                </span>
-                <span className="overflow-hidden break-words text-sm text-slate-700 dark:text-slate-300">
-                  {!value ? (
-                    "-"
-                  ) : typeof value === "string" ? (
-                    isUrl(value) ? (
-                      <a
-                        href={value}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="link-underline"
-                      >
-                        {value}
-                      </a>
-                    ) : (
-                      value
-                    )
-                  ) : Array.isArray(value) ? (
-                    value.length > 0 ? (
-                      value.map((item, idx, arr) =>
-                        typeof item === "string" && isUrl(item) ? (
-                          <div key={idx}>
-                            <a
-                              href={item}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="link-underline"
-                            >
-                              {item}
-                            </a>
-                          </div>
-                        ) : (
-                          <>
-                            <span key={idx}>{item}</span>
-                            {arr.length - 1 !== idx && <span>, </span>}
-                          </>
-                        )
-                      )
-                    ) : (
-                      "-"
-                    )
-                  ) : (
-                    typeof value === "object"
-                      ? JSON.stringify(value)
-                      : value
-                  )}
-                </span>
+                <img
+                  src={(c.logo as string) || "/image-broken.png"}
+                  alt=""
+                  loading="lazy"
+                  width={100}
+                  height={100}
+                  className="h-[100px] w-[100px] object-contain p-1"
+                />
+              </a>
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:gap-3">
+              <div className="flex min-w-0 max-w-2xl flex-col gap-3 sm:shrink-0">
+                {useful.map((entry, index) => renderField(entry, index))}
               </div>
-            );
-          })}
+              <div className="flex min-w-0 flex-1 flex-col gap-3">
+                {rest.map((entry, index) => renderField(entry, index))}
+              </div>
+            </div>
+          </div>
         </div>
       );
     },
@@ -619,6 +640,7 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
     ),
     state: {
       columnFilters,
+      expanded,
       globalFilter,
       isLoading,
       showAlertBanner: isError,

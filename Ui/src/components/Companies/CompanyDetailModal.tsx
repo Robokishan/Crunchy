@@ -1,11 +1,13 @@
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import type { ReactNode } from "react";
 import { useMemo } from "react";
 import Modal from "react-modal";
 import { useThemeMode } from "~/contexts/ThemeContext";
 import { useIsMobile } from "~/hooks/useIsMobile";
-import { isUrl } from "~/utils";
 import type { CompayDetail } from "~/utils/types";
+import {
+  formatDetailValue,
+  getSortedDetailEntries,
+} from "./detailFields";
 
 Modal.setAppElement("#popup");
 
@@ -14,88 +16,6 @@ type Props = {
   isOpen: boolean;
   onClose: () => void;
 };
-
-function formatValue(value: unknown): ReactNode {
-  if (value == null || value === "") return "-";
-  if (typeof value === "string") {
-    return isUrl(value) ? (
-      <a href={value} target="_blank" rel="noopener noreferrer" className="link-underline">
-        {value}
-      </a>
-    ) : (
-      value
-    );
-  }
-  if (Array.isArray(value)) {
-    if (value.length === 0) return "-";
-    return value.map((item, idx, arr) =>
-      typeof item === "string" && isUrl(item) ? (
-        <div key={idx}>
-          <a href={item} target="_blank" rel="noopener noreferrer" className="link-underline">
-            {item}
-          </a>
-        </div>
-      ) : (
-        <span key={idx}>
-          {String(item)}
-          {arr.length - 1 !== idx && ", "}
-        </span>
-      )
-    );
-  }
-  if (typeof value === "object") return JSON.stringify(value);
-  return String(value);
-}
-
-const AFTER_LASTFUNDING = ["lastfunding", "description", "long_description"] as const;
-
-const BELOW_UPDATED_AT = [
-  "sources",
-  "source_priority",
-  "crunchbase_url",
-  "tracxn_url",
-  "match_confidence",
-  "logo",
-] as const;
-
-function getDetailSortKey(
-  entry: { key: string; index: number },
-  foundersIndex: number,
-  updatedAtIndex: number,
-  createdAtIndex: number,
-  longDescriptionIndex: number
-): number {
-  const k = entry.key;
-  const i = entry.index;
-  if (k === "_id") return createdAtIndex >= 0 ? createdAtIndex - 0.5 : i;
-  if (k === "name") return -1;
-  if (k === "website") return 0;
-  if (k === "similar_companies") return 1e9;
-  if (k === "founders") return foundersIndex >= 0 ? foundersIndex : i;
-  if (k === "founded") return foundersIndex >= 0 ? foundersIndex + 0.5 : i;
-  if (k === "lastfunding") return foundersIndex >= 0 ? foundersIndex + 1 : i;
-  if (k === "normalized_domain") return longDescriptionIndex >= 0 ? longDescriptionIndex + 0.5 : i;
-  if (k === "funding_usd") return longDescriptionIndex >= 0 ? longDescriptionIndex + 1 : i;
-  if (k === "updated_at") return updatedAtIndex >= 0 ? updatedAtIndex : i;
-  const belowIdx = BELOW_UPDATED_AT.indexOf(k as (typeof BELOW_UPDATED_AT)[number]);
-  if (belowIdx !== -1)
-    return updatedAtIndex >= 0 ? updatedAtIndex + 1 + belowIdx : i;
-  return i;
-}
-
-function detailFieldCompare(
-  a: { key: string; value: unknown; index: number },
-  b: { key: string; value: unknown; index: number },
-  foundersIndex: number,
-  updatedAtIndex: number,
-  createdAtIndex: number,
-  longDescriptionIndex: number
-): number {
-  return (
-    getDetailSortKey(a, foundersIndex, updatedAtIndex, createdAtIndex, longDescriptionIndex) -
-    getDetailSortKey(b, foundersIndex, updatedAtIndex, createdAtIndex, longDescriptionIndex)
-  );
-}
 
 export function CompanyDetailModal({ company, isOpen, onClose }: Props) {
   const { effectiveTheme } = useThemeMode();
@@ -178,31 +98,16 @@ export function CompanyDetailModal({ company, isOpen, onClose }: Props) {
             />
           </a>
         </div>
-        {(() => {
-          const entries = Object.entries(company).map(([key, value], index) => ({
-            key,
-            value,
-            index,
-          }));
-          const foundersIndex = entries.findIndex((e) => e.key === "founders");
-          const updatedAtIndex = entries.findIndex((e) => e.key === "updated_at");
-          const createdAtIndex = entries.findIndex((e) => e.key === "created_at");
-          const longDescriptionIndex = entries.findIndex((e) => e.key === "long_description");
-          return entries
-            .sort((a, b) =>
-              detailFieldCompare(a, b, foundersIndex, updatedAtIndex, createdAtIndex, longDescriptionIndex)
-            )
-            .map(({ key, value }, index) => (
+        {getSortedDetailEntries(company).map(({ key, value }, index) => (
           <div key={`${company._id}-${index}-expand`} className="flex flex-col">
             <span className="text-sm font-medium capitalize text-slate-500 dark:text-slate-400">
               {key}:
             </span>
-            <span className="overflow-hidden break-words text-sm text-slate-700 dark:text-slate-300">
-              {formatValue(value)}
+            <span className="overflow-hidden break-words break-all text-sm text-slate-700 dark:text-slate-300">
+              {formatDetailValue(value)}
             </span>
           </div>
-            ));
-        })()}
+        ))}
 
       </div>
     </Modal>
