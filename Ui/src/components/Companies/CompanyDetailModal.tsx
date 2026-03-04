@@ -7,6 +7,7 @@ import type { CompayDetail } from "~/utils/types";
 import {
   formatDetailValue,
   getSortedDetailEntries,
+  getSortedDetailEntriesForMobile,
 } from "./detailFields";
 
 Modal.setAppElement("#popup");
@@ -98,7 +99,7 @@ export function CompanyDetailModal({ company, isOpen, onClose }: Props) {
             />
           </a>
         </div>
-        {getSortedDetailEntries(company).map(({ key, value }, index) => (
+        {(isMobile ? getSortedDetailEntriesForMobile(company) : getSortedDetailEntries(company)).map(({ key, value }, index) => (
           <div key={`${company._id}-${index}-expand`} className="flex flex-col">
             <span className="text-sm font-medium capitalize text-slate-500 dark:text-slate-400">
               {key}:

@@ -35,6 +35,7 @@ import {
   detailKeyToLabel,
   formatDetailValue,
   getSortedDetailEntries,
+  getSortedDetailEntriesForMobile,
   isMetadataDetailKey,
 } from "./detailFields";
 import { type CompayDetail } from "~/utils/types";
@@ -669,7 +670,7 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
     }),
     renderDetailPanel: ({ row }) => {
       const c = row.original as unknown as Record<string, unknown>;
-      const entries = getSortedDetailEntries(c);
+      const entries = isMobile ? getSortedDetailEntriesForMobile(c) : getSortedDetailEntries(c);
       const useful = entries.filter((e) => !isMetadataDetailKey(e.key));
       const rest = entries.filter((e) => isMetadataDetailKey(e.key));
       const renderField = ({ key, value }: { key: string; value: unknown }, index: number) => {

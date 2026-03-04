@@ -66,6 +66,51 @@ export function getSortedDetailEntries(
     .map(({ key, value }) => ({ key, value }));
 }
 
+/** Mobile-only order: name, website, then rest with description + long_description right below lastfunding. */
+const MOBILE_ORDER_KEYS = [
+  "name",
+  "website",
+  "industries",
+  "founders",
+  "founded",
+  "funding",
+  "funding_usd",
+  "lastfunding",
+  "description",
+  "long_description",
+  "stocksymbol",
+  "acquired",
+  "crunchbase_url",
+  "tracxn_url",
+  "created_at",
+  "updated_at",
+  "_id",
+  "sources",
+  "source_priority",
+  "match_confidence",
+  "normalized_domain",
+  "logo",
+  "similar_companies",
+];
+
+export function getSortedDetailEntriesForMobile(
+  company: Record<string, unknown>
+): DetailEntry[] {
+  const byKey = new Map<string, unknown>(Object.entries(company));
+  const result: DetailEntry[] = [];
+  const seen = new Set<string>();
+  for (const key of MOBILE_ORDER_KEYS) {
+    if (byKey.has(key)) {
+      result.push({ key, value: byKey.get(key) });
+      seen.add(key);
+    }
+  }
+  for (const [key, value] of Object.entries(company)) {
+    if (!seen.has(key)) result.push({ key, value });
+  }
+  return result;
+}
+
 export function formatDetailValue(value: unknown): ReactNode {
   if (value == null || value === "") return "-";
   if (typeof value === "string") {
