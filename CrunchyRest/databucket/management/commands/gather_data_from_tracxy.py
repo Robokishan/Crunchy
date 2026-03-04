@@ -14,6 +14,7 @@ Usage:
 
 from django.core.management import BaseCommand
 from django.conf import settings
+from django.utils import timezone
 from rabbitmq.apps import RabbitMQManager
 from rabbitmq.databucket_consumer import run_consumer
 from databucket.models import Crunchbase, TracxnRaw
@@ -172,6 +173,7 @@ class Command(BaseCommand):
                 founded_tracxn = (data.get('founded') or '').strip()
                 if founded_tracxn:
                     update_kw['founded'] = founded_tracxn
+                update_kw['updated_at'] = timezone.now()
                 updated = merge_qs.update(**update_kw)
                 if updated:
                     parts = ['funding', 'funding_usd']
@@ -187,6 +189,7 @@ class Command(BaseCommand):
                         parts.append('tracxn_url')
                     if update_kw.get('similar_companies'):
                         parts.append('similar_companies')
+                    parts.append('updated_at')
                     print(f"  - [Merge] Updated {updated} Crunchbase record(s): {', '.join(parts)}")
                 else:
                     print(f"  - [Merge] Updated 0 rows (no Crunchbase record with normalized_domain={repr(normalized)})")
