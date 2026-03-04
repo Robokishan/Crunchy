@@ -99,7 +99,9 @@ class CompaniesListView(generics.ListAPIView):
             mongo_query = [
                 {'name': {'$regex': globalFilter, '$options': 'i'}},
                 {'description': {'$regex': globalFilter, '$options': 'i'}},
-                {'founders': {'$regex': globalFilter, '$options': 'i'}}
+                {'long_description': {'$regex': globalFilter, '$options': 'i'}},
+                {'founders': {'$regex': globalFilter, '$options': 'i'}},
+                {'website': {'$regex': globalFilter, '$options': 'i'}}
             ]
             root_query['$or'] = mongo_query
         elif filters:
