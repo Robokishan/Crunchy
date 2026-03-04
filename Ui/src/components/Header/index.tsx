@@ -39,10 +39,9 @@ function ResponsiveAppBar() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const { mode, setMode } = useThemeMode();
-  const { headerHidden, scrollContainerRef } = useHeaderScroll();
+  const { scrollContainerRef } = useHeaderScroll();
   const location = useLocation();
   const isHome = location.pathname === "/";
-  const hideHeader = isHome && headerHidden;
 
   const scrollChromeIntoView = useCallback(() => {
     if (!isHome || !isMobile) return;
@@ -111,9 +110,6 @@ function ResponsiveAppBar() {
         zIndex: 9999,
         background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%)",
         borderBottom: "1px solid rgba(255,255,255,0.08)",
-        transform: hideHeader ? "translateY(-100%)" : "none",
-        transition: "transform 0.2s ease-out",
-        pointerEvents: hideHeader ? "none" : "auto",
       }}
     >
       <Container maxWidth="xl" sx={{ minWidth: 0, maxWidth: "100%", width: "100%" }}>

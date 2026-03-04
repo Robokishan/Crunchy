@@ -27,6 +27,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { isUrl } from "~/utils";
 import crunchyClient from "~/utils/crunchyClient";
@@ -57,12 +58,76 @@ type UserApiResponse = {
 
 type IndustryOptionSortBy = "industryCount" | "alphabetical" | "default";
 
+const DEFAULT_SORTING: MRT_SortingState = [{ id: "created_at", desc: true }];
+
+function parseTableStateFromSearchParams(
+  params: URLSearchParams
+): {
+  columnFilters: MRT_ColumnFiltersState;
+  globalFilter: string | undefined;
+  sorting: MRT_SortingState;
+} {
+  const searchQ = params.get("search") ?? params.get("q") ?? "";
+  const globalFilter = searchQ.trim() || undefined;
+
+  const sortParam = params.get("sort");
+  let sorting: MRT_SortingState = DEFAULT_SORTING;
+  if (sortParam) {
+    const [id, dir] = sortParam.split(":");
+    if (id && (dir === "asc" || dir === "desc"))
+      sorting = [{ id, desc: dir === "desc" }];
+  }
+
+  const industriesParam = params.get("industries");
+  const industryList = industriesParam
+    ? industriesParam.split(",").map((s) => s.trim()).filter(Boolean)
+    : [];
+  const fundingMin = params.get("fundingMin");
+  const fundingMax = params.get("fundingMax");
+  const minNum =
+    fundingMin != null && fundingMin !== "" ? Number(fundingMin) : undefined;
+  const maxNum =
+    fundingMax != null && fundingMax !== "" ? Number(fundingMax) : undefined;
+
+  const columnFilters: MRT_ColumnFiltersState = [];
+  if (industryList.length > 0)
+    columnFilters.push({ id: "industries", value: industryList });
+  if (minNum != null || maxNum != null)
+    columnFilters.push({
+      id: "funding_usd",
+      value: [minNum ?? undefined, maxNum ?? undefined],
+    });
+
+  return { columnFilters, globalFilter, sorting };
+}
+
+function buildSearchParamsFromState(
+  columnFilters: MRT_ColumnFiltersState,
+  globalFilter: string | undefined,
+  sorting: MRT_SortingState
+): URLSearchParams {
+  const params = new URLSearchParams();
+  if (globalFilter?.trim()) params.set("search", globalFilter.trim());
+  const sort = sorting[0];
+  if (sort) params.set("sort", `${sort.id}:${sort.desc ? "desc" : "asc"}`);
+  const industries = columnFilters.find((f) => f.id === "industries")
+    ?.value as string[] | undefined;
+  if (industries?.length) params.set("industries", industries.join(","));
+  const funding = columnFilters.find((f) => f.id === "funding_usd")
+    ?.value as [number | undefined, number | undefined] | undefined;
+  if (funding) {
+    if (funding[0] != null) params.set("fundingMin", String(funding[0]));
+    if (funding[1] != null) params.set("fundingMax", String(funding[1]));
+  }
+  return params;
+}
+
 export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
   const isMobile = useIsMobile();
-  const { headerHidden, setHeaderHidden, scrollContainerRef } = useHeaderScroll();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { setHeaderHidden, scrollContainerRef } = useHeaderScroll();
   const tableContainerRef = useRef<HTMLDivElement>(null); //we can get access to the underlying TableContainer element and react to its scroll events
   const mobileCardsContainerRef = useRef<HTMLDivElement>(null);
-  const cardsSentinelRef = useRef<HTMLDivElement>(null);
   const touchStartYRef = useRef<number>(0);
   const rowVirtualizerInstanceRef =
     useRef<MRT_RowVirtualizer<HTMLDivElement, HTMLTableRowElement>>(null);
@@ -70,16 +135,16 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
   const [crawlModalIsOpen, setOpenCrawlModal] = useState(false);
   const [modalData, setModalData] = useState();
   const [detailModalCompany, setDetailModalCompany] = useState<CompayDetail | null>(null);
+
   const [columnFilters, setColumnFilters] = useState<MRT_ColumnFiltersState>(
-    []
+    () => parseTableStateFromSearchParams(searchParams).columnFilters
   );
-  const [globalFilter, setGlobalFilter] = useState<string>();
-  const [sorting, setSorting] = useState<MRT_SortingState>([
-    {
-      id: "created_at",
-      desc: true,
-    },
-  ]);
+  const [globalFilter, setGlobalFilter] = useState<string | undefined>(
+    () => parseTableStateFromSearchParams(searchParams).globalFilter
+  );
+  const [sorting, setSorting] = useState<MRT_SortingState>(
+    () => parseTableStateFromSearchParams(searchParams).sorting
+  );
   const [industryOptionSortBy, setIndustryOptionSortBy] =
     useState<IndustryOptionSortBy>("default");
   const [expanded, setExpanded] = useState<MRT_ExpandedState>({});
@@ -229,6 +294,26 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
     }
   }, [sorting, columnFilters, globalFilter]);
 
+  // Persist sorting, search, industry filter, and funding range in URL for shareable links
+  useEffect(() => {
+    const next = buildSearchParamsFromState(columnFilters, globalFilter, sorting);
+    setSearchParams(next, { replace: true });
+  }, [columnFilters, globalFilter, sorting, setSearchParams]);
+
+  // Sync state from URL only on browser back/forward (popstate). If we depended on searchParams here,
+  // we'd overwrite state with stale params right after we write the URL (e.g. sort toggle would revert).
+  useEffect(() => {
+    const onPopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const parsed = parseTableStateFromSearchParams(params);
+      setColumnFilters(parsed.columnFilters);
+      setGlobalFilter(parsed.globalFilter);
+      setSorting(parsed.sorting);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
   //a check on mount to see if the table is already scrolled to the bottom and immediately needs to fetch more data
   useEffect(() => {
     fetchMoreOnBottomReached(tableContainerRef.current);
@@ -351,6 +436,10 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
         accessorKey: "funding_usd",
         header: "Funding USD",
         filterVariant: "range",
+        size: 260,
+        muiFilterTextFieldProps: {
+          sx: { minWidth: 112 },
+        },
         Cell: ({ cell }) => <>{cell.getValue() ?? "-"}</>,
       },
       {
@@ -657,23 +746,6 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
 
   const HEADER_HEIGHT_PX = 56;
 
-  // When cards section reaches top (filter scrolled away), hide header so cards get full view
-  useEffect(() => {
-    if (!isMobile || !scrollContainerRef.current || !cardsSentinelRef.current) return;
-    const root = scrollContainerRef.current;
-    const sentinel = cardsSentinelRef.current;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const e = entries[0];
-        if (!e) return;
-        setHeaderHidden(!e.isIntersecting);
-      },
-      { root, rootMargin: "0px", threshold: 0 }
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [isMobile, setHeaderHidden]);
-
   useEffect(() => {
     if (!isMobile) setHeaderHidden(false);
     return () => setHeaderHidden(false);
@@ -740,10 +812,10 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
         /* Level 1: outer scroll – header/filter chrome; Level 2: card container has its own scroll */
         <div
           ref={scrollContainerRef}
-          className="fixed left-0 right-0 z-0 overflow-x-hidden overflow-y-auto overscroll-contain bg-[#f8fafc] dark:bg-[#0f172a] transition-[top,height] duration-200 ease-out"
+          className="fixed left-0 right-0 z-0 overflow-x-hidden overflow-y-auto overscroll-contain bg-[#f8fafc] dark:bg-[#0f172a]"
           style={{
-            top: headerHidden ? 0 : HEADER_HEIGHT_PX,
-            height: headerHidden ? "100vh" : `calc(100vh - ${HEADER_HEIGHT_PX}px)`,
+            top: HEADER_HEIGHT_PX,
+            height: `calc(100vh - ${HEADER_HEIGHT_PX}px)`,
           }}
           role="main"
           aria-label="Company list"
@@ -800,13 +872,13 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
               />
             </div>
           </div>
-          <div ref={cardsSentinelRef} className="h-0 w-full shrink-0" aria-hidden />
+          <div className="h-0 w-full shrink-0" aria-hidden />
           {/* Level 2: card root container – own scroll, fills viewport when chrome is scrolled away */}
           <div
             ref={mobileCardsContainerRef}
             className="min-h-0 shrink-0 overflow-x-hidden overflow-y-auto overscroll-contain bg-[#f8fafc] dark:bg-[#0f172a]"
             style={{
-              height: headerHidden ? "100vh" : `calc(100vh - ${HEADER_HEIGHT_PX}px)`,
+              height: `calc(100vh - ${HEADER_HEIGHT_PX}px)`,
             }}
             onScroll={(e) => fetchMoreOnBottomReached(e.currentTarget)}
             aria-label="Company cards"

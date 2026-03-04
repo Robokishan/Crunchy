@@ -201,7 +201,7 @@ export function MobileFilters({
             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
               Funding USD
             </span>
-            <div className="flex gap-2">
+            <div className="flex min-w-0 gap-2">
               <TextField
                 size="small"
                 type="number"
@@ -214,7 +214,11 @@ export function MobileFilters({
                   onFundingUsdChange(Number.isFinite(n) ? n : undefined, fundingUsdMax);
                 }}
                 inputProps={{ min: 0, step: 1000 }}
-                sx={{ flex: 1, "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
+                sx={{
+                  flex: 1,
+                  minWidth: 112,
+                  "& .MuiOutlinedInput-root": { borderRadius: 2 },
+                }}
               />
               <TextField
                 size="small"
@@ -228,7 +232,11 @@ export function MobileFilters({
                   onFundingUsdChange(fundingUsdMin, Number.isFinite(n) ? n : undefined);
                 }}
                 inputProps={{ min: 0, step: 1000 }}
-                sx={{ flex: 1, "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
+                sx={{
+                  flex: 1,
+                  minWidth: 112,
+                  "& .MuiOutlinedInput-root": { borderRadius: 2 },
+                }}
               />
             </div>
           </div>
