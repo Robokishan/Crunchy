@@ -8,7 +8,7 @@ import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
-import Link from "next/link";
+import { Link } from "react-router-dom";
 import * as React from "react";
 
 const pages = [
@@ -82,7 +82,7 @@ function ResponsiveAppBar() {
             >
               {pages.map(({ name, href }) => (
                 <MenuItem key={name} onClick={handleCloseNavMenu}>
-                  <Link href={href}>
+                  <Link to={href}>
                     <Typography sx={{ textAlign: "center" }}>{name}</Typography>
                   </Link>
                 </MenuItem>
@@ -92,7 +92,7 @@ function ResponsiveAppBar() {
 
           <Box sx={{ flexGrow: 1, display: { xs: "none", md: "flex" } }}>
             {pages.map(({ name, href }) => (
-              <Link key={name} href={href}>
+              <Link key={name} to={href}>
                 <Button
                   sx={{
                     my: 2,

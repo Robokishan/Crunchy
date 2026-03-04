@@ -1,5 +1,5 @@
-import { MappingArg, mapToNotion } from "~/utils/notion/maping";
-import notionClient from "~/utils/notionServerClient";
+import { MappingArg, mapToNotion } from "../../notion/maping.js";
+import notionClient from "../../notionServerClient.js";
 
 const BASE_DATABASE = "/v1/databases";
 const BASE_PAGE = "/v1/pages";

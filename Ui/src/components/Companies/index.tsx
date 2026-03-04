@@ -18,8 +18,6 @@ import {
   MRT_SortingState,
   useMaterialReactTable,
 } from "material-react-table";
-import Image from "next/image";
-import Link from "next/link";
 import {
   type UIEvent,
   useCallback,
@@ -157,15 +155,20 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
         Cell: ({ cell }) => {
           return (
             <div className="flex h-auto w-auto items-center gap-5">
-              <Link href={cell.row.original?.logo || "/image-broken.png"}>
-                <Image
+              <a
+                href={cell.row.original?.logo || "/image-broken.png"}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <img
                   src={cell.row.original?.logo || "/image-broken.png"}
                   alt="company-icon"
                   loading="lazy"
                   width={40}
                   height={40}
+                  className="h-10 w-10 object-contain"
                 />
-              </Link>
+              </a>
               <button onClick={() => openExportModal(cell.row.original)}>
                 <ArrowTopRightOnSquareIcon className="h-5 w-5 fill-gray-800" />
               </button>
@@ -179,13 +182,15 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
         Cell: ({ cell }) => (
           <>
             {cell.row.original.website ? (
-              <Link
+              <a
                 className="text-blue-500 underline "
                 href={cell.row.original.website}
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 {" "}
                 {cell.row.original.name}{" "}
-              </Link>
+              </a>
             ) : (
               cell.row.original.name
             )}
@@ -301,13 +306,15 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
         Cell: ({ cell }) => (
           <>
             {cell.row.original.website ? (
-              <Link
+              <a
                 className="text-blue-500 underline "
                 href={cell.row.original.website}
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 {" "}
                 {cell.row.original.website}{" "}
-              </Link>
+              </a>
             ) : (
               "-"
             )}
@@ -321,13 +328,15 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
         Cell: ({ cell }) => (
           <>
             {cell.row.original.crunchbase_url ? (
-              <Link
+              <a
                 className="text-blue-500 underline "
                 href={cell.row.original.crunchbase_url}
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 {" "}
                 {cell.row.original.crunchbase_url}{" "}
-              </Link>
+              </a>
             ) : (
               "-"
             )}
@@ -341,7 +350,7 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
         Cell: ({ cell }) => (
           <>
             {cell.row.original.tracxn_url ? (
-              <Link
+              <a
                 className="text-blue-500 underline "
                 href={cell.row.original.tracxn_url}
                 target="_blank"
@@ -349,7 +358,7 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
               >
                 {" "}
                 {cell.row.original.tracxn_url}{" "}
-              </Link>
+              </a>
             ) : (
               "-"
             )}
@@ -448,15 +457,20 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
       return (
         <div className="grid w-[100vw] grid-cols-2 content-center gap-4 rounded-md border-2 border-solid border-slate-300 bg-white p-2">
           <div className="flex h-32 w-32 items-center">
-            <Link href={row.original?.logo || "/image-broken.png"}>
-              <Image
+            <a
+              href={row.original?.logo || "/image-broken.png"}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <img
                 src={row.original?.logo || "/image-broken.png"}
                 alt="company-icon"
                 loading="lazy"
                 width={100}
                 height={100}
+                className="h-[100px] w-[100px] object-contain"
               />
-            </Link>
+            </a>
           </div>
           {Object.entries(row.original).map(([key, value], index) => {
             return (
@@ -486,15 +500,15 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
                     value.length > 0 ? (
                       value.map((item, idx, arr) =>
                         typeof item === "string" && isUrl(item) ? (
-                          <div>
-                            <Link
-                              key={idx}
+                          <div key={idx}>
+                            <a
                               href={item}
                               target="_blank"
+                              rel="noopener noreferrer"
                               className="text-blue-500 underline"
                             >
                               {item}
-                            </Link>
+                            </a>
                           </div>
                         ) : (
                           <>

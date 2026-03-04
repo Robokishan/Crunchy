@@ -1,6 +1,5 @@
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import axios from "axios";
-import Image from "next/image";
 import { useEffect, useState } from "react";
 import Modal from "react-modal";
 import { toast } from "react-toastify";
@@ -173,11 +172,12 @@ export default function ExportToNotion({
               }));
             }}
           />
-          <Image
+          <img
             src={notionData?.iconUrl}
             alt="company-icon"
             width={40}
             height={40}
+            className="h-10 w-10 object-contain"
           />
           <input
             name="acquired"

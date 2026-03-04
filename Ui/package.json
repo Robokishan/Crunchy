@@ -2,11 +2,21 @@
   "name": "ui",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
+  "packageManager": "pnpm@8.15.5",
+  "engines": {
+    "node": ">=24.11.0 <25",
+    "pnpm": "8.15.5"
+  },
   "scripts": {
-    "build": "next build",
-    "dev": "env-cmd -f ../.env.dev  next dev",
-    "lint": "next lint",
-    "start": "next start"
+    "dev": "env-cmd -f ../.env.dev vite",
+    "dev:env": "env-cmd -f ../.env.dev vite",
+    "build": "env-cmd -f ../.env.prod vite build",
+    "build:server": "tsc -p tsconfig.server.json",
+    "preview": "vite preview",
+    "lint": "eslint src --ext ts,tsx",
+    "server": "tsx -r tsconfig-paths/register server/index.ts",
+    "server:prod": "NODE_ENV=production tsx -r tsconfig-paths/register server/index.ts"
   },
   "dependencies": {
     "@emotion/react": "^11.13.3",
@@ -16,18 +26,18 @@
     "@mui/lab": "^6.0.0-beta.9",
     "@mui/material": "^6.0.2",
     "@mui/x-date-pickers": "^7.16.0",
-    "@t3-oss/env-nextjs": "^0.3.1",
     "@tanstack/react-query": "^5.55.0",
     "axios": "^1.4.0",
     "date-fns": "^3.6.0",
-    "env-cmd": "^10.1.0",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
     "material-react-table": "^3.0.1",
-    "next": "^13.4.2",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-hot-toast": "^2.4.1",
     "react-modal": "^3.16.1",
     "react-outside-click-handler": "^1.3.0",
+    "react-router-dom": "^6.21.0",
     "react-toastify": "^9.1.3",
     "react-virtuoso": "^4.3.11",
     "swr": "^2.2.0",
@@ -35,6 +45,7 @@
   },
   "devDependencies": {
     "@types/eslint": "^8.37.0",
+    "@types/express": "^4.17.21",
     "@types/node": "^18.16.0",
     "@types/prettier": "^2.7.2",
     "@types/react": "^18.2.6",
@@ -43,16 +54,17 @@
     "@types/react-outside-click-handler": "^1.3.1",
     "@typescript-eslint/eslint-plugin": "^5.59.6",
     "@typescript-eslint/parser": "^5.59.6",
+    "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.14",
     "eslint": "^8.40.0",
-    "eslint-config-next": "^13.4.2",
     "postcss": "^8.4.21",
     "prettier": "^2.8.8",
+    "env-cmd": "^10.1.0",
     "prettier-plugin-tailwindcss": "^0.2.8",
     "tailwindcss": "^3.3.0",
-    "typescript": "^5.0.4"
-  },
-  "ct3aMetadata": {
-    "initVersion": "7.13.2"
+    "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.0.4",
+    "vite": "^5.0.10"
   }
 }

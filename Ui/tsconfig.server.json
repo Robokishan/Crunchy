@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "dist-server",
+    "rootDir": ".",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "types": ["node"]
+  },
+  "include": [
+    "server/**/*.ts",
+    "src/utils/apis/notion/**/*.ts",
+    "src/utils/notion/**/*.ts",
+    "src/utils/notionServerClient.ts"
+  ],
+  "exclude": ["node_modules"]
+}
