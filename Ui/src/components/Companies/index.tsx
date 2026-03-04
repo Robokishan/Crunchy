@@ -235,6 +235,8 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
   }, [fetchMoreOnBottomReached]);
 
   // Shrink table container when content is smaller than 80vh to remove the huge gap (desktop)
+  // Use a minimum height so that 1 or few results don't collapse to a tiny strip
+  const TABLE_MIN_HEIGHT_PX = 280;
   useEffect(() => {
     if (isMobile) return;
     const rafId = requestAnimationFrame(() => {
@@ -242,7 +244,9 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
         const total = rowVirtualizerInstanceRef.current?.getTotalSize?.();
         if (typeof total === "number" && total > 0) {
           const maxVh = window.innerHeight * 0.8;
-          setTableContainerHeight(total < maxVh ? `${Math.ceil(total)}px` : "80vh");
+          const contentHeight = Math.ceil(total);
+          const heightPx = Math.max(TABLE_MIN_HEIGHT_PX, Math.min(contentHeight, maxVh));
+          setTableContainerHeight(contentHeight < maxVh ? `${heightPx}px` : "80vh");
         } else {
           setTableContainerHeight("80vh");
         }
