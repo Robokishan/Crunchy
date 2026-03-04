@@ -12,7 +12,7 @@ import MenuItem from "@mui/material/MenuItem";
 import Toolbar from "@mui/material/Toolbar";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import * as React from "react";
 import { useThemeMode } from "~/contexts/ThemeContext";
 
@@ -33,13 +33,16 @@ const pages = [
 
 function ResponsiveAppBar() {
   const { mode, setMode } = useThemeMode();
+  const location = useLocation();
   const [anchorElNav, setAnchorElNav] = React.useState<null | HTMLElement>(
     null
   );
   const [anchorElUser, setAnchorElUser] = React.useState<null | HTMLElement>(
     null
   );
-  const isActive = (m: "system" | "dark" | "light") => mode === m;
+  const isThemeActive = (m: "system" | "dark" | "light") => mode === m;
+  const isNavActive = (href: string) =>
+    href === "/" ? location.pathname === "/" : location.pathname.startsWith(href);
 
   const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElNav(event.currentTarget);
@@ -57,63 +60,81 @@ function ResponsiveAppBar() {
   };
 
   return (
-    <AppBar position="static">
+    <AppBar
+      position="static"
+      elevation={0}
+      sx={{
+        background: "linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%)",
+        borderBottom: "1px solid rgba(255,255,255,0.08)",
+      }}
+    >
       <Container maxWidth="xl">
-        <Toolbar disableGutters>
+        <Toolbar disableGutters sx={{ minHeight: { xs: 56, md: 64 }, px: { xs: 1, sm: 2 } }}>
           <Box sx={{ flexGrow: 1, display: { xs: "flex", md: "none" } }}>
             <IconButton
               size="large"
-              aria-label="account of current user"
+              aria-label="Open menu"
               aria-controls="menu-appbar"
               aria-haspopup="true"
               onClick={handleOpenNavMenu}
               color="inherit"
+              sx={{
+                "&:hover": { backgroundColor: "rgba(255,255,255,0.12)" },
+                "&:focus-visible": { boxShadow: "0 0 0 3px rgba(255,255,255,0.35)" },
+              }}
             >
               <MenuIcon />
             </IconButton>
             <Menu
               id="menu-appbar"
               anchorEl={anchorElNav}
-              anchorOrigin={{
-                vertical: "bottom",
-                horizontal: "left",
-              }}
+              anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
               keepMounted
-              transformOrigin={{
-                vertical: "top",
-                horizontal: "left",
-              }}
+              transformOrigin={{ vertical: "top", horizontal: "left" }}
               open={Boolean(anchorElNav)}
               onClose={handleCloseNavMenu}
-              sx={{ display: { xs: "block", md: "none" } }}
+              sx={{
+                display: { xs: "block", md: "none" },
+                "& .MuiPaper-root": { borderRadius: 2, mt: 1.5, minWidth: 180 },
+              }}
             >
               {pages.map(({ name, href }) => (
-                <MenuItem key={name} onClick={handleCloseNavMenu}>
-                  <Link to={href}>
-                    <Typography sx={{ textAlign: "center" }}>{name}</Typography>
-                  </Link>
+                <MenuItem key={name} onClick={handleCloseNavMenu} component={Link} to={href}>
+                  <Typography sx={{ fontWeight: isNavActive(href) ? 600 : 400 }}>
+                    {name}
+                  </Typography>
                 </MenuItem>
               ))}
               <MenuItem onClick={() => { setMode("system"); handleCloseNavMenu(); }}>
-                <SettingsBrightness sx={{ mr: 1 }} /> System
+                <SettingsBrightness sx={{ mr: 1.5, fontSize: 20 }} /> System
               </MenuItem>
               <MenuItem onClick={() => { setMode("dark"); handleCloseNavMenu(); }}>
-                <DarkMode sx={{ mr: 1 }} /> Dark
+                <DarkMode sx={{ mr: 1.5, fontSize: 20 }} /> Dark
               </MenuItem>
               <MenuItem onClick={() => { setMode("light"); handleCloseNavMenu(); }}>
-                <LightMode sx={{ mr: 1 }} /> Light
+                <LightMode sx={{ mr: 1.5, fontSize: 20 }} /> Light
               </MenuItem>
             </Menu>
           </Box>
 
-          <Box sx={{ flexGrow: 1, display: { xs: "none", md: "flex" } }}>
+          <Box sx={{ flexGrow: 1, display: { xs: "none", md: "flex" }, alignItems: "center", gap: 0.5 }}>
             {pages.map(({ name, href }) => (
-              <Link key={name} to={href}>
+              <Link key={name} to={href} style={{ textDecoration: "none" }}>
                 <Button
                   sx={{
-                    my: 2,
                     color: "white",
-                    display: "block",
+                    fontWeight: isNavActive(href) ? 600 : 500,
+                    opacity: isNavActive(href) ? 1 : 0.9,
+                    px: 2,
+                    py: 1.5,
+                    borderRadius: 2,
+                    "&:hover": {
+                      backgroundColor: "rgba(255,255,255,0.12)",
+                      opacity: 1,
+                    },
+                    "&:focus-visible": {
+                      boxShadow: "0 0 0 3px rgba(255,255,255,0.35)",
+                    },
                   }}
                 >
                   {name}
@@ -121,18 +142,20 @@ function ResponsiveAppBar() {
               </Link>
             ))}
           </Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.25 }}>
             <Tooltip title="System theme">
               <IconButton
                 color="inherit"
                 onClick={() => setMode("system")}
                 aria-label="Theme: System"
+                size="medium"
                 sx={{
-                  backgroundColor: isActive("system") ? "rgba(255,255,255,0.2)" : undefined,
-                  "&:hover": { backgroundColor: "rgba(255,255,255,0.1)" },
+                  backgroundColor: isThemeActive("system") ? "rgba(255,255,255,0.22)" : "transparent",
+                  "&:hover": { backgroundColor: "rgba(255,255,255,0.12)" },
+                  "&:focus-visible": { boxShadow: "0 0 0 3px rgba(255,255,255,0.35)" },
                 }}
               >
-                <SettingsBrightness />
+                <SettingsBrightness sx={{ fontSize: 22 }} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Dark mode">
@@ -140,12 +163,14 @@ function ResponsiveAppBar() {
                 color="inherit"
                 onClick={() => setMode("dark")}
                 aria-label="Theme: Dark"
+                size="medium"
                 sx={{
-                  backgroundColor: isActive("dark") ? "rgba(255,255,255,0.2)" : undefined,
-                  "&:hover": { backgroundColor: "rgba(255,255,255,0.1)" },
+                  backgroundColor: isThemeActive("dark") ? "rgba(255,255,255,0.22)" : "transparent",
+                  "&:hover": { backgroundColor: "rgba(255,255,255,0.12)" },
+                  "&:focus-visible": { boxShadow: "0 0 0 3px rgba(255,255,255,0.35)" },
                 }}
               >
-                <DarkMode />
+                <DarkMode sx={{ fontSize: 22 }} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Light mode">
@@ -153,12 +178,14 @@ function ResponsiveAppBar() {
                 color="inherit"
                 onClick={() => setMode("light")}
                 aria-label="Theme: Light"
+                size="medium"
                 sx={{
-                  backgroundColor: isActive("light") ? "rgba(255,255,255,0.2)" : undefined,
-                  "&:hover": { backgroundColor: "rgba(255,255,255,0.1)" },
+                  backgroundColor: isThemeActive("light") ? "rgba(255,255,255,0.22)" : "transparent",
+                  "&:hover": { backgroundColor: "rgba(255,255,255,0.12)" },
+                  "&:focus-visible": { boxShadow: "0 0 0 3px rgba(255,255,255,0.35)" },
                 }}
               >
-                <LightMode />
+                <LightMode sx={{ fontSize: 22 }} />
               </IconButton>
             </Tooltip>
           </Box>

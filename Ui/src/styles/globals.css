@@ -2,19 +2,74 @@
 @tailwind components;
 @tailwind utilities;
 
-/* After React mounts: light theme */
-body.app-loaded {
-  background: #fff;
-  color: #111827;
-}
-body.app-loaded #root {
-  background: #fff;
-  min-height: 100vh;
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply font-sans antialiased;
+  }
+
+  /* After React mounts: light theme */
+  body.app-loaded {
+    background: #f8fafc;
+    color: #0f172a;
+  }
+  body.app-loaded #root {
+    background: #f8fafc;
+    min-height: 100vh;
+  }
+
+  /* Dark theme (when html has .dark) */
+  html.dark body.app-loaded,
+  html.dark body.app-loaded #root {
+    background: #0f172a;
+    color: #e2e8f0;
+  }
+
+  /* Accessible focus ring (keyboard only) */
+  *:focus {
+    @apply outline-none;
+  }
+  *:focus-visible {
+    @apply outline-none ring-2 ring-brand-500 ring-offset-2;
+  }
+  html.dark *:focus-visible {
+    @apply ring-2 ring-brand-400 ring-offset-2 ring-offset-[#0f172a];
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-brand-200 text-brand-900;
+  }
+  html.dark ::selection {
+    @apply bg-brand-700/60 text-white;
+  }
 }
 
-/* Dark theme (when html has .dark) */
-html.dark body.app-loaded,
-html.dark body.app-loaded #root {
-  background: #111827;
-  color: #e5e7eb;
+/* Utility for card-style containers */
+@layer components {
+  .card-base {
+    @apply rounded-card border border-slate-200/80 bg-white p-6 shadow-card transition-shadow duration-smooth dark:border-slate-700/60 dark:bg-surface-dark-elevated dark:shadow-card-dark;
+  }
+  .card-base:hover {
+    @apply shadow-card-hover dark:shadow-card-dark;
+  }
+
+  .page-title {
+    @apply text-xl font-semibold tracking-tight text-slate-800 dark:text-slate-100;
+  }
+
+  .input-base {
+    @apply w-full rounded-input border border-slate-300 bg-white px-3 py-2.5 text-slate-900 placeholder-slate-500 transition-colors duration-smooth focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-400 dark:focus:border-brand-400 dark:focus:ring-brand-400/25;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-button border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition-colors duration-smooth hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 dark:focus-visible:ring-offset-surface-dark;
+  }
+
+  .link-underline {
+    @apply text-brand-600 underline decoration-brand-500/40 underline-offset-2 transition-colors hover:text-brand-700 hover:decoration-brand-500 dark:text-brand-400 dark:hover:text-brand-300;
+  }
 }

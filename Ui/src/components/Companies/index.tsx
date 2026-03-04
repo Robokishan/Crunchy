@@ -26,7 +26,7 @@ import {
   useRef,
   useState,
 } from "react";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import { isUrl } from "~/utils";
 import crunchyClient from "~/utils/crunchyClient";
 import { type CompayDetail } from "~/utils/types";
@@ -169,8 +169,13 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
                   className="h-10 w-10 object-contain"
                 />
               </a>
-              <button onClick={() => openExportModal(cell.row.original)}>
-                <ArrowTopRightOnSquareIcon className="h-5 w-5 fill-gray-800" />
+              <button
+                type="button"
+                onClick={() => openExportModal(cell.row.original)}
+                className="rounded-input p-1.5 text-slate-600 transition-colors hover:bg-slate-100 hover:text-brand-600 focus-visible:ring-2 focus-visible:ring-brand-500 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-brand-400"
+                aria-label="Export to Notion"
+              >
+                <ArrowTopRightOnSquareIcon className="h-5 w-5" />
               </button>
             </div>
           );
@@ -183,13 +188,12 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
           <>
             {cell.row.original.website ? (
               <a
-                className="text-blue-500 underline "
+                className="link-underline"
                 href={cell.row.original.website}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {" "}
-                {cell.row.original.name}{" "}
+                {cell.row.original.name}
               </a>
             ) : (
               cell.row.original.name
@@ -307,13 +311,12 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
           <>
             {cell.row.original.website ? (
               <a
-                className="text-blue-500 underline "
+                className="link-underline"
                 href={cell.row.original.website}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {" "}
-                {cell.row.original.website}{" "}
+                {cell.row.original.website}
               </a>
             ) : (
               "-"
@@ -329,13 +332,12 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
           <>
             {cell.row.original.crunchbase_url ? (
               <a
-                className="text-blue-500 underline "
+                className="link-underline"
                 href={cell.row.original.crunchbase_url}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {" "}
-                {cell.row.original.crunchbase_url}{" "}
+                {cell.row.original.crunchbase_url}
               </a>
             ) : (
               "-"
@@ -351,13 +353,12 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
           <>
             {cell.row.original.tracxn_url ? (
               <a
-                className="text-blue-500 underline "
+                className="link-underline"
                 href={cell.row.original.tracxn_url}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {" "}
-                {cell.row.original.tracxn_url}{" "}
+                {cell.row.original.tracxn_url}
               </a>
             ) : (
               "-"
@@ -438,10 +439,10 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
     },
     enableColumnPinning: true,
     muiTableContainerProps: {
-      ref: tableContainerRef, //get access to the table container element
-      sx: { maxHeight: "80vh" }, //give the table a max height
+      ref: tableContainerRef,
+      sx: { maxHeight: "80vh", borderRadius: 2 },
       onScroll: (event: UIEvent<HTMLDivElement>) =>
-        fetchMoreOnBottomReached(event.target as HTMLDivElement), //add an event listener to the table container element
+        fetchMoreOnBottomReached(event.target as HTMLDivElement),
     },
     muiToolbarAlertBannerProps: isError
       ? {
@@ -455,7 +456,7 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
     enableExpandAll: false,
     renderDetailPanel: ({ row }) => {
       return (
-        <div className="grid w-[100vw] grid-cols-2 content-center gap-4 rounded-md border-2 border-solid border-slate-300 bg-white p-2 dark:border-gray-600 dark:bg-gray-800">
+        <div className="grid w-full grid-cols-2 gap-4 rounded-panel border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-600 dark:bg-slate-800/50">
           <div className="flex h-32 w-32 items-center">
             <a
               href={row.original?.logo || "/image-broken.png"}
@@ -478,10 +479,10 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
                 key={`${row.original._id}-${index}-expand`}
                 className="flex flex-col"
               >
-                <span className="text-base capitalize text-gray-500 dark:text-gray-300">
+                <span className="text-sm font-medium capitalize text-slate-500 dark:text-slate-400">
                   {key}:
                 </span>
-                <span className="overflow-hidden break-words text-gray-500 dark:text-gray-300">
+                <span className="overflow-hidden break-words text-sm text-slate-700 dark:text-slate-300">
                   {!value ? (
                     "-"
                   ) : typeof value === "string" ? (
@@ -489,7 +490,8 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
                       <a
                         href={value}
                         target="_blank"
-                        className="text-blue-500 underline"
+                        rel="noopener noreferrer"
+                        className="link-underline"
                       >
                         {value}
                       </a>
@@ -505,7 +507,7 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
                               href={item}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-500 underline"
+                              className="link-underline"
                             >
                               {item}
                             </a>
@@ -533,7 +535,7 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
       );
     },
     renderBottomToolbarCustomActions: () => (
-      <Typography className="text-gray-600 dark:text-gray-300">
+      <Typography className="text-sm text-slate-600 dark:text-slate-400">
         Fetched {totalFetched} of {totalDBRowCount} total rows.
       </Typography>
     ),
@@ -550,24 +552,28 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
   });
 
   return (
-    <div className="mb-2 mt-2 rounded-md bg-white p-5 shadow-2xl dark:bg-gray-800 dark:shadow-gray-900">
-      <div className="flex items-center gap-2">
-        <h1 className="mr-5 text-center text-xl text-gray-900 dark:text-gray-100">
-          Company Details
-        </h1>
-        <h3 className="mr-5 text-center text-lg text-gray-900 dark:text-gray-100">
+    <div className="card-base mx-4 mb-6 mt-6 w-full max-w-[1600px] sm:mx-6 md:mx-auto">
+      <div className="flex flex-wrap items-center gap-4">
+        <h1 className="page-title">Company Details</h1>
+        <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700 dark:bg-slate-600 dark:text-slate-200">
           {totalDBRowCount}
-        </h3>
+        </span>
         <Button
-          onClick={() => {
-            setOpenCrawlModal(true);
-          }}
-          variant="outlined"
+          onClick={() => setOpenCrawlModal(true)}
+          variant="contained"
           color="primary"
+          sx={{
+            textTransform: "none",
+            fontWeight: 600,
+            borderRadius: 2,
+            px: 2.5,
+            py: 1.25,
+            boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+          }}
         >
           Create Crawl
         </Button>
-        <FormControl sx={{ minWidth: 120 }}>
+        <FormControl size="small" sx={{ minWidth: 160 }}>
           <InputLabel id="industry-sort-by-label">Industry Sort By</InputLabel>
           <Select
             labelId="industry-sort-by-label"
@@ -577,23 +583,22 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
             onChange={(e) =>
               setIndustryOptionSortBy(e.target.value as IndustryOptionSortBy)
             }
+            sx={{ borderRadius: 2 }}
           >
             <MenuItem value="default">Default</MenuItem>
             <MenuItem value="alphabetical">Alphabetical</MenuItem>
             <MenuItem value="industryCount">Industry Count</MenuItem>
           </Select>
         </FormControl>
-        <span className="relative flex h-3 w-3">
-          {isLoading && (
-            <>
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-75"></span>
-              <span className="relative inline-flex h-3 w-3 rounded-full bg-sky-500"></span>
-            </>
-          )}
-        </span>
+        {isLoading && (
+          <span className="relative flex h-3 w-3" aria-hidden>
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-400 opacity-75" />
+            <span className="relative inline-flex h-3 w-3 rounded-full bg-brand-500" />
+          </span>
+        )}
       </div>
       <Pending />
-      <hr className="my-3 h-px border-0 bg-gray-200 dark:bg-gray-600" />
+      <hr className="my-4 border-0 bg-slate-200 dark:bg-slate-600" style={{ height: 1 }} />
 
       {/* <SearchInput onSearch={onSearch} /> */}
 
@@ -612,7 +617,6 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
           setModal={setOpenCrawlModal}
         />
       )}
-      <Toaster />
     </div>
   );
 };

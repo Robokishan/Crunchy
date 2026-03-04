@@ -1,4 +1,3 @@
-import { Divider, Typography } from "@mui/material";
 import { useRef, useState } from "react";
 import useSWR from "swr";
 import crunchyClient from "~/utils/crunchyClient";
@@ -22,28 +21,13 @@ export const Pending = () => {
   }
 
   return (
-    <div className="flex gap-1">
-      <Typography component="span" color="error">
-        Crunchbase:
-      </Typography>
-      <Typography component="span" color="error">
-        {data?.data.crunchbase ?? "-"}
-      </Typography>
-      <Divider
-        orientation="vertical"
-        flexItem
-        sx={{
-          color: "black",
-          borderRightWidth: 2,
-          marginX: "3px",
-        }}
-      />
-      <Typography component="span" color="warning">
-        Tracxn:
-      </Typography>
-      <Typography component="span" color="warning">
-        {data?.data.tracxn ?? "-"}
-      </Typography>
+    <div className="flex flex-wrap items-center gap-2 text-sm">
+      <span className="rounded-full bg-red-100 px-2.5 py-0.5 font-medium text-red-800 dark:bg-red-900/40 dark:text-red-300">
+        Crunchbase: <strong>{data?.data.crunchbase ?? "-"}</strong>
+      </span>
+      <span className="rounded-full bg-amber-100 px-2.5 py-0.5 font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+        Tracxn: <strong>{data?.data.tracxn ?? "-"}</strong>
+      </span>
     </div>
   );
 };

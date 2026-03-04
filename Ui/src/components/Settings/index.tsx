@@ -6,7 +6,7 @@ import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import { useEffect, useRef, useState } from "react";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import useSWR from "swr";
 import crunchyClient from "~/utils/crunchyClient";
 import Switch from "@mui/material/Switch";
@@ -74,21 +74,24 @@ export const Settings = () => {
   }, [data?.data.interested_industries]);
 
   return (
-    <div className="mb-2 mt-2 rounded-md bg-white p-5 shadow-2xl dark:bg-gray-800 dark:shadow-gray-900">
-      <Toaster />
-      <div className="flex items-center gap-2">
-        <h1 className="mr-5 text-center text-xl text-gray-900 dark:text-gray-100">Settings</h1>
+    <div className="card-base mx-4 mb-6 mt-6 w-full max-w-6xl sm:mx-6 md:mx-auto">
+      <div className="flex flex-wrap items-center gap-3">
+        <h1 className="page-title">Settings</h1>
+        <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300">
+          <Switch
+            checked={settingsView === "list"}
+            onChange={() =>
+              setSettingsView((prev) => (prev === "list" ? "text" : "list"))
+            }
+            aria-label="Toggle list or text view"
+            size="small"
+          />
+          <span>{settingsView === "list" ? "List view" : "Text view"}</span>
+        </label>
       </div>
-      <hr className="my-3 h-px border-0 bg-gray-200 dark:bg-gray-600" />
-      <Switch
-        checked={settingsView === "list"}
-        onChange={() =>
-          setSettingsView((prev) => (prev === "list" ? "text" : "list"))
-        }
-        aria-label="toggle-ui-settings"
-      />
+      <hr className="my-4 border-0 bg-slate-200 dark:bg-slate-600" style={{ height: 1 }} />
       {isFetching || isLoading ? (
-        <h1 className="text-gray-900 dark:text-gray-100">Loading...</h1>
+        <p className="text-slate-600 dark:text-slate-300">Loading...</p>
       ) : settingsView === "list" ? (
         <>
           <Grid2 container>
@@ -98,6 +101,9 @@ export const Settings = () => {
                   width: "100%",
                   maxWidth: 360,
                   bgcolor: "background.paper",
+                  borderRadius: 2,
+                  border: "1px solid",
+                  borderColor: "divider",
                 }}
               >
                 {data?.data.industries.map((value: any) => {
@@ -130,14 +136,18 @@ export const Settings = () => {
 
             <Grid2>
               <Button
-                sx={{
-                  color: "blue",
-                  marginRight: "10px",
-                }}
                 variant="contained"
                 onClick={() => save()}
+                sx={{
+                  textTransform: "none",
+                  fontWeight: 600,
+                  borderRadius: 2,
+                  px: 2.5,
+                  py: 1.25,
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                }}
               >
-                <h1>Save</h1>
+                Save
               </Button>
             </Grid2>
 
@@ -147,6 +157,9 @@ export const Settings = () => {
                   width: "100%",
                   maxWidth: 360,
                   bgcolor: "background.paper",
+                  borderRadius: 2,
+                  border: "1px solid",
+                  borderColor: "divider",
                 }}
               >
                 {data?.data.interested_industries.map((value: any) => {
@@ -183,32 +196,18 @@ export const Settings = () => {
             <TextareaAutosize
               maxRows={50}
               name="name"
-              placeholder="Name"
+              placeholder="Industries JSON"
               value={JSON.stringify(data?.data.industries, null, 2)}
-              style={{
-                padding: "10px",
-                width: "100%",
-                background: "#353B43",
-                color: "#F9F9F9",
-                fontFamily: "monospace",
-              }}
+              className="input-base min-h-[200px] font-mono text-sm"
             />
           </Grid2>
-          {/* vertical straight line */}
-
           <Grid2 size={6}>
             <TextareaAutosize
               maxRows={50}
               name="name"
-              placeholder="Name"
+              placeholder="Interested industries JSON"
               value={JSON.stringify(data?.data.interested_industries, null, 2)}
-              style={{
-                padding: "10px",
-                width: "100%",
-                background: "#353B43",
-                color: "#F9F9F9",
-                fontFamily: "monospace",
-              }}
+              className="input-base min-h-[200px] font-mono text-sm"
             />
           </Grid2>
         </Grid2>

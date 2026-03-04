@@ -55,26 +55,22 @@ export const Connection = () => {
   );
 
   return (
-    <div className="mb-2 mt-2 rounded-md bg-white p-5 shadow-2xl dark:bg-gray-800 dark:shadow-gray-900">
-      <div className="flex items-center gap-2">
-        <h1 className="mr-5 text-center text-xl text-gray-900 dark:text-gray-100">
-          Find Connections
-        </h1>
-        <span className="relative flex h-3 w-3">
-          {isLoading && (
-            <>
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-75"></span>
-              <span className="relative inline-flex h-3 w-3 rounded-full bg-sky-500"></span>
-            </>
-          )}
-        </span>
+    <div className="card-base mx-4 mb-6 mt-6 w-full max-w-6xl sm:mx-6 md:mx-auto">
+      <div className="flex flex-wrap items-center gap-3">
+        <h1 className="page-title">Find Connections</h1>
+        {isLoading && (
+          <span className="relative flex h-3 w-3" aria-hidden>
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-400 opacity-75" />
+            <span className="relative inline-flex h-3 w-3 rounded-full bg-brand-500" />
+          </span>
+        )}
       </div>
-      <hr className="my-3 h-px border-0 bg-gray-200 dark:bg-gray-600" />
+      <hr className="my-4 border-0 bg-slate-200 dark:bg-slate-600" style={{ height: 1 }} />
 
-      <Grid container spacing={2}>
-        <Grid item xs={8} md={4}>
-          <Grid container spacing={2} alignItems="center">
-            <FormControl variant="standard" sx={{ m: 1, minWidth: 120 }}>
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={5}>
+          <div className="flex flex-wrap items-end gap-3">
+            <FormControl variant="outlined" size="small" sx={{ minWidth: 120 }}>
               <TypeSelector
                 label="Source"
                 labelId="source-Label-Type"
@@ -82,15 +78,14 @@ export const Connection = () => {
                 handleChange={(e: any) => setSourceType(e.target.value)}
               />
             </FormControl>
-            <FormControl variant="standard" sx={{ m: 1, minWidth: 120 }}>
-              <input
-                type="text"
-                placeholder="Search"
-                onChange={(e) => setSourceValue(e.target.value)}
-                className="rounded-l border border-gray-300 bg-gray-200 px-4 py-2 focus:bg-white focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:focus:bg-gray-600 dark:text-gray-100"
-              />
-            </FormControl>
-            <FormControl variant="standard" sx={{ m: 1, minWidth: 120 }}>
+            <input
+              type="text"
+              placeholder="Search"
+              value={sourceValue}
+              onChange={(e) => setSourceValue(e.target.value)}
+              className="input-base max-w-[200px]"
+            />
+            <FormControl variant="outlined" size="small" sx={{ minWidth: 120 }}>
               <TypeSelector
                 label="Target"
                 labelId="target-Label-Type"
@@ -99,24 +94,22 @@ export const Connection = () => {
               />
             </FormControl>
             <button
+              type="button"
               onClick={() =>
                 onSearch({ sourceType, targetType, value: sourceValue })
               }
+              className="inline-flex h-10 w-10 items-center justify-center rounded-input border border-slate-300 bg-white text-slate-600 shadow-sm transition-colors hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+              aria-label="Search connections"
             >
-              <ArrowTopRightOnSquareIcon className="h-5 w-5 fill-gray-800" />
+              <ArrowTopRightOnSquareIcon className="h-5 w-5" />
             </button>
-          </Grid>
+          </div>
         </Grid>
-        <Grid item xs={8} md={4}>
+        <Grid item xs={12} md={7}>
           <TextareaAutosize
             maxRows={100}
-            style={{
-              width: "100vh",
-              background: "#353B43",
-              color: "#F9F9F9",
-              fontFamily: "monospace",
-            }}
             value={JSON.stringify(fetchedData, null, 2)}
+            className="input-base min-h-[280px] w-full font-mono text-sm"
           />
         </Grid>
       </Grid>

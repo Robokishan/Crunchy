@@ -8,7 +8,7 @@ type Props = {
   label:string,
 };
 
-export default function TypeSelector({labelId, label,selectId, handleChange }: Props) {
+export default function TypeSelector({ labelId, label, selectId, handleChange }: Props) {
   return (
     <>
       <InputLabel id={labelId}>{label}</InputLabel>
@@ -17,6 +17,8 @@ export default function TypeSelector({labelId, label,selectId, handleChange }: P
         id={selectId}
         label={label}
         onChange={handleChange}
+        variant="outlined"
+        size="small"
       >
         <MenuItem value="industry">Industry</MenuItem>
         <MenuItem value="company">Company</MenuItem>

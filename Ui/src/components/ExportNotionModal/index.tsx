@@ -1,8 +1,9 @@
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import axios from "axios";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Modal from "react-modal";
 import { toast } from "react-toastify";
+import { useThemeMode } from "~/contexts/ThemeContext";
 
 type Props = {
   setModal: (openModal: boolean) => void;
@@ -25,33 +26,6 @@ export interface CompanyDetails {
   acquired: string;
 }
 
-const customStyles = {
-  content: {
-    boxShadow: "0px 6px 28px 4px rgba(90, 106, 157, 0.2)",
-    width: "30%",
-    border: "0px",
-    minWidth: "400px",
-    top: "50%",
-    left: "50%",
-    right: "auto",
-    bottom: "auto",
-    maxHeight: "calc(100vh - 15rem)",
-    marginRight: "-50%",
-    transform: "translate(-50%, -50%)",
-    borderRadius: "16px",
-    padding: "40px 44px 18px",
-  },
-  overlay: {
-    zIndex: 50,
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "#E5E5E580",
-  },
-} as const;
-
 Modal.setAppElement("#popup");
 
 export default function ExportToNotion({
@@ -59,6 +33,45 @@ export default function ExportToNotion({
   modalIsOpen,
   modalData,
 }: Props) {
+  const { effectiveTheme } = useThemeMode();
+  const isDark = effectiveTheme === "dark";
+
+  const customStyles = useMemo(
+    () => ({
+      content: {
+        boxShadow: isDark
+          ? "0 25px 50px -12px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.06)"
+          : "0 25px 50px -12px rgb(0 0 0 / 0.15), 0 0 0 1px rgb(0 0 0 / 0.05)",
+        width: "42%",
+        border: "none",
+        minWidth: "420px",
+        maxWidth: "560px",
+        top: "50%",
+        left: "50%",
+        right: "auto",
+        bottom: "auto",
+        maxHeight: "calc(100vh - 12rem)",
+        marginRight: "-50%",
+        transform: "translate(-50%, -50%)",
+        borderRadius: "16px",
+        padding: "32px 40px 24px",
+        backgroundColor: isDark ? "#1e293b" : "#fff",
+        color: isDark ? "#e2e8f0" : "#0f172a",
+      } as React.CSSProperties,
+      overlay: {
+        zIndex: 50,
+        position: "fixed" as const,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: isDark ? "rgba(15,23,42,0.82)" : "rgba(15,23,42,0.4)",
+        backdropFilter: "blur(4px)",
+      } as React.CSSProperties,
+    }),
+    [isDark]
+  );
+
   const [isLoading, setLoader] = useState(false);
   const [notionData, setNotionData] = useState<CompanyDetails>(
     modalData && {
@@ -94,144 +107,53 @@ export default function ExportToNotion({
     });
   }, [modalData]);
 
+  const update = (name: string, value: string) =>
+    setNotionData((prev: any) => ({ ...prev, [name]: value }));
+
   return (
     <Modal
       isOpen={modalIsOpen}
       onRequestClose={() => setModal(false)}
       style={customStyles}
-      contentLabel="Export to Notion Modal"
+      contentLabel="Export to Notion"
     >
       <div>
-        {/* title */}
-        <div className="flex items-center gap-5 ">
-          <span>Export To Notion</span>
-          <XMarkIcon
-            onClick={() => setModal(false)}
-            className="ml-auto h-6 w-6 cursor-pointer text-slate-500"
-          />
-        </div>
-        {/* body */}
-        <div className="mt-2 grid grid-cols-2 gap-4">
-          <input
-            name="name"
-            placeholder="Name"
-            value={notionData?.name}
-            className="m-0 rounded-md border border-solid  px-2 py-2 focus:border-sky-500  focus:outline-none"
-            onChange={(e) => {
-              setNotionData((prev: any) => ({
-                ...prev,
-                [e.target.name]: e.target.value,
-              }));
-            }}
-          />
-          <input
-            name="crunchbaseUrl"
-            placeholder="Crunchbase URL"
-            value={notionData?.crunchbaseUrl}
-            className="m-0 rounded-md border border-solid  px-2 py-2 focus:border-sky-500  focus:outline-none"
-            onChange={(e) => {
-              setNotionData((prev: any) => ({
-                ...prev,
-                [e.target.name]: e.target.value,
-              }));
-            }}
-          />
-          <input
-            name="website"
-            placeholder="Website"
-            value={notionData?.website}
-            className="m-0 rounded-md border border-solid  px-2 py-2 focus:border-sky-500  focus:outline-none"
-            onChange={(e) => {
-              setNotionData((prev: any) => ({
-                ...prev,
-                [e.target.name]: e.target.value,
-              }));
-            }}
-          />
-          <input
-            name="funding"
-            placeholder="Funding"
-            value={notionData?.funding}
-            className="m-0 rounded-md border border-solid  px-2 py-2 focus:border-sky-500  focus:outline-none"
-            onChange={(e) => {
-              setNotionData((prev: any) => ({
-                ...prev,
-                [e.target.name]: e.target.value,
-              }));
-            }}
-          />
-          <input
-            name="iconUrl"
-            placeholder="Logo"
-            className="m-0 rounded-md border border-solid  px-2 py-2 focus:border-sky-500  focus:outline-none"
-            value={notionData?.iconUrl}
-            onChange={(e) => {
-              setNotionData((prev: any) => ({
-                ...prev,
-                [e.target.name]: e.target.value,
-              }));
-            }}
-          />
-          <img
-            src={notionData?.iconUrl}
-            alt="company-icon"
-            width={40}
-            height={40}
-            className="h-10 w-10 object-contain"
-          />
-          <input
-            name="acquired"
-            placeholder="Acquired"
-            className="m-0 rounded-md border border-solid  px-2 py-2 focus:border-sky-500  focus:outline-none"
-            value={notionData?.acquired}
-            onChange={(e) => {
-              setNotionData((prev: any) => ({
-                ...prev,
-                [e.target.name]: e.target.value,
-              }));
-            }}
-          />
-          <input
-            name="description"
-            placeholder="Description"
-            className="m-0 rounded-md border border-solid  px-2 py-2 focus:border-sky-500  focus:outline-none"
-            value={notionData?.description}
-            onChange={(e) => {
-              setNotionData((prev: any) => ({
-                ...prev,
-                [e.target.name]: e.target.value,
-              }));
-            }}
-          />
-          <input
-            name="lastfunding"
-            placeholder="Last Fund"
-            className="m-0 rounded-md border border-solid  px-2 py-2 focus:border-sky-500  focus:outline-none"
-            value={notionData?.lastfunding}
-            onChange={(e) => {
-              setNotionData((prev: any) => ({
-                ...prev,
-                [e.target.name]: e.target.value,
-              }));
-            }}
-          />
-        </div>
-        <div className="mb-2 mt-8 flex gap-3">
+        <div className="flex items-center gap-4">
+          <h2 className="text-lg font-semibold tracking-tight">Export to Notion</h2>
           <button
-            className="text-slate ml-auto cursor-pointer rounded-md bg-slate-100 p-2 text-slate-600 shadow-xl shadow-gray-200"
+            type="button"
             onClick={() => setModal(false)}
+            className="ml-auto rounded-input p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-brand-500 dark:text-slate-400 dark:hover:bg-slate-600 dark:hover:text-slate-200"
+            aria-label="Close"
           >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <input name="name" placeholder="Name" value={notionData?.name} className="input-base" onChange={(e) => update(e.target.name, e.target.value)} />
+          <input name="crunchbaseUrl" placeholder="Crunchbase URL" value={notionData?.crunchbaseUrl} className="input-base" onChange={(e) => update(e.target.name, e.target.value)} />
+          <input name="website" placeholder="Website" value={notionData?.website} className="input-base" onChange={(e) => update(e.target.name, e.target.value)} />
+          <input name="funding" placeholder="Funding" value={notionData?.funding} className="input-base" onChange={(e) => update(e.target.name, e.target.value)} />
+          <input name="iconUrl" placeholder="Logo URL" value={notionData?.iconUrl} className="input-base" onChange={(e) => update(e.target.name, e.target.value)} />
+          <div className="flex items-center justify-center">
+            {notionData?.iconUrl ? (
+              <img src={notionData.iconUrl} alt="Company" width={40} height={40} className="h-10 w-10 rounded-input object-contain bg-slate-100 dark:bg-slate-700" />
+            ) : (
+              <span className="text-sm text-slate-400">No logo</span>
+            )}
+          </div>
+          <input name="acquired" placeholder="Acquired" value={notionData?.acquired} className="input-base" onChange={(e) => update(e.target.name, e.target.value)} />
+          <input name="description" placeholder="Description" value={notionData?.description} className="input-base col-span-2" onChange={(e) => update(e.target.name, e.target.value)} />
+          <input name="lastfunding" placeholder="Last Fund" value={notionData?.lastfunding} className="input-base" onChange={(e) => update(e.target.name, e.target.value)} />
+        </div>
+        <div className="mt-6 flex flex-wrap justify-end gap-3">
+          <button type="button" className="btn-secondary" onClick={() => setModal(false)}>
             Cancel
           </button>
           <button
+            type="button"
             disabled={isLoading}
-            className={`text-slate first-letter: inline-flex cursor-pointer items-center rounded-md bg-slate-800 
-            px-3
-            py-2
-            text-slate-300
-            shadow-xl
-            shadow-gray-200
-            ${isLoading && "opacity-50"}`}
+            className="inline-flex items-center justify-center rounded-button bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600"
             onClick={() => {
               setLoader(true);
               axios
@@ -260,12 +182,13 @@ export default function ExportToNotion({
   );
 }
 
+
 function Loader() {
   return (
     <svg
       aria-hidden="true"
       role="status"
-      className="mr-2 inline h-4 w-4 animate-spin text-gray-800 "
+      className="mr-2 inline h-4 w-4 animate-spin text-white"
       viewBox="0 0 100 101"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"

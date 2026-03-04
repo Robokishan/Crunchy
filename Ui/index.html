@@ -5,15 +5,19 @@
   <meta charset="UTF-8" />
   <link rel="icon" href="/favicon.ico" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#111827" />
+  <meta name="theme-color" content="#0f172a" />
   <meta name="description" content="Crunchy" />
   <title>Crunchy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet" />
   <style>
     /* Initial splash loader (before React mounts) */
     body {
       margin: 0;
-      background: #111827;
-      color: #e5e7eb;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-family: "Plus Jakarta Sans", system-ui, sans-serif;
     }
 
     #root {
@@ -26,52 +30,32 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: radial-gradient(circle at top, #111827 0, #020617 55%, #000 100%);
+      background: radial-gradient(ellipse 80% 50% at 50% 40%, #1e293b 0%, #0f172a 50%, #020617 100%);
     }
 
     .loader-bars {
       display: flex;
-      gap: 6px;
+      gap: 8px;
       align-items: flex-end;
     }
 
     .loader-bar {
-      width: 6px;
-      height: 26px;
-      border-radius: 999px;
-      background: #22c55e;
-      animation: pulse-bars 900ms ease-in-out infinite;
+      width: 8px;
+      height: 32px;
+      border-radius: 9999px;
+      background: linear-gradient(180deg, #34d399 0%, #10b981 100%);
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.35);
+      animation: pulse-bars 1000ms ease-in-out infinite;
     }
 
-    .loader-bar:nth-child(2) {
-      animation-delay: 90ms;
-    }
-
-    .loader-bar:nth-child(3) {
-      animation-delay: 180ms;
-    }
-
-    .loader-bar:nth-child(4) {
-      animation-delay: 270ms;
-    }
+    .loader-bar:nth-child(2) { animation-delay: 100ms; }
+    .loader-bar:nth-child(3) { animation-delay: 200ms; }
+    .loader-bar:nth-child(4) { animation-delay: 300ms; }
 
     @keyframes pulse-bars {
-
-      0%,
-      100% {
-        transform: scaleY(0.4);
-        opacity: 0.6;
-      }
-
-      30% {
-        transform: scaleY(1);
-        opacity: 1;
-      }
-
-      60% {
-        transform: scaleY(0.7);
-        opacity: 0.85;
-      }
+      0%, 100% { transform: scaleY(0.45); opacity: 0.7; }
+      35% { transform: scaleY(1); opacity: 1; }
+      65% { transform: scaleY(0.75); opacity: 0.9; }
     }
   </style>
 </head>

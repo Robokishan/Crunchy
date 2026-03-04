@@ -88,6 +88,73 @@ export function ThemeContextProvider({ children }: { children: ReactNode }) {
         palette: {
           mode: effectiveTheme,
           primary: { main: "#2563eb" },
+          background: {
+            default: effectiveTheme === "dark" ? "#0f172a" : "#f8fafc",
+            paper: effectiveTheme === "dark" ? "#1e293b" : "#ffffff",
+          },
+        },
+        typography: {
+          fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif',
+          h1: { fontWeight: 600, letterSpacing: "-0.02em" },
+          h2: { fontWeight: 600, letterSpacing: "-0.02em" },
+          h3: { fontWeight: 600, letterSpacing: "-0.01em" },
+          body1: { lineHeight: 1.6 },
+          body2: { lineHeight: 1.5 },
+        },
+        shape: { borderRadius: 8 },
+        components: {
+          MuiButton: {
+            styleOverrides: {
+              root: {
+                textTransform: "none",
+                fontWeight: 600,
+                borderRadius: 8,
+                "&:focus-visible": {
+                  boxShadow: "0 0 0 3px rgba(37, 99, 235, 0.35)",
+                },
+              },
+            },
+          },
+          MuiIconButton: {
+            styleOverrides: {
+              root: {
+                "&:focus-visible": {
+                  boxShadow: "0 0 0 3px rgba(255,255,255,0.25)",
+                },
+              },
+            },
+          },
+          MuiTextField: {
+            defaultProps: {
+              variant: "outlined",
+              size: "small",
+            },
+            styleOverrides: {
+              root: {
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 8,
+                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                    borderWidth: 2,
+                  },
+                },
+              },
+            },
+          },
+          MuiPaper: {
+            styleOverrides: {
+              root: {
+                borderRadius: 12,
+                backgroundImage: "none",
+              },
+            },
+          },
+          MuiSelect: {
+            styleOverrides: {
+              root: {
+                borderRadius: 8,
+              },
+            },
+          },
         },
       }),
     [effectiveTheme]

@@ -22,9 +22,11 @@ export default function CreateCrawl({ setModal, modalIsOpen }: Props) {
   const customStyles = useMemo(
     () => ({
       content: {
-        boxShadow: "0px 6px 28px 4px rgba(90, 106, 157, 0.2)",
+        boxShadow: isDark
+          ? "0 25px 50px -12px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.06)"
+          : "0 25px 50px -12px rgb(0 0 0 / 0.15), 0 0 0 1px rgb(0 0 0 / 0.05)",
         width: "30%",
-        border: "0px",
+        border: "none",
         minWidth: "400px",
         top: "50%",
         left: "50%",
@@ -34,9 +36,9 @@ export default function CreateCrawl({ setModal, modalIsOpen }: Props) {
         marginRight: "-50%",
         transform: "translate(-50%, -50%)",
         borderRadius: "16px",
-        padding: "40px 44px 18px",
-        backgroundColor: isDark ? "#1f2937" : "#fff",
-        color: isDark ? "#e5e7eb" : "#111827",
+        padding: "32px 40px 24px",
+        backgroundColor: isDark ? "#1e293b" : "#fff",
+        color: isDark ? "#e2e8f0" : "#0f172a",
       } as React.CSSProperties,
       overlay: {
         zIndex: 50,
@@ -45,7 +47,8 @@ export default function CreateCrawl({ setModal, modalIsOpen }: Props) {
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: isDark ? "rgba(0,0,0,0.75)" : "#E5E5E580",
+        backgroundColor: isDark ? "rgba(15,23,42,0.82)" : "rgba(15,23,42,0.4)",
+        backdropFilter: "blur(4px)",
       } as React.CSSProperties,
     }),
     [isDark]
@@ -103,38 +106,37 @@ export default function CreateCrawl({ setModal, modalIsOpen }: Props) {
       contentLabel="Create Crawl"
     >
       <div>
-        {/* title */}
-        <div className="flex items-center gap-5 ">
-          <span className="text-lg font-medium">Create Crawl</span>
-          <XMarkIcon
+        <div className="flex items-center gap-4">
+          <h2 className="text-lg font-semibold tracking-tight">Create Crawl</h2>
+          <button
+            type="button"
             onClick={() => setModal(false)}
-            className="ml-auto h-6 w-6 cursor-pointer text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200"
-          />
+            className="ml-auto rounded-input p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-brand-500 dark:text-slate-400 dark:hover:bg-slate-600 dark:hover:text-slate-200"
+            aria-label="Close"
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
         </div>
-        {/* body */}
-        <div className="mt-2 w-full">
+        <div className="mt-4 w-full">
           <TextareaAutosize
             maxRows={15}
             minRows={10}
             name="name"
-            placeholder="Name"
+            placeholder="Paste URLs (one per line)"
             value={crawlPostData}
-            style={{
-              padding: "10px",
-              width: "100%",
-              background: isDark ? "#374151" : "#f3f4f6",
-              color: isDark ? "#e5e7eb" : "#111827",
-              fontFamily: "monospace",
-              border: "1px solid " + (isDark ? "#4b5563" : "#d1d5db"),
-              borderRadius: "8px",
-            }}
+            className="input-base min-h-[180px] w-full font-mono text-sm"
             onChange={handleChange}
           />
         </div>
-        {error && <div className="mt-1 text-red-500 dark:text-red-400">{error}</div>}
-        <div className="mb-2 mt-8 flex gap-3">
+        {error && (
+          <p className="mt-2 text-sm text-red-600 dark:text-red-400" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="mt-6 flex flex-wrap justify-end gap-3">
           <button
-            className="ml-auto cursor-pointer rounded-md p-2 shadow-xl bg-slate-100 text-slate-600 shadow-gray-200 hover:bg-slate-200 dark:bg-gray-600 dark:text-gray-200 dark:shadow-gray-900 dark:hover:bg-gray-500"
+            type="button"
+            className="btn-secondary"
             onClick={() => setModal(false)}
           >
             Cancel

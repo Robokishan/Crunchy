@@ -1,0 +1,146 @@
+/* ========== react-hot-toast ========== */
+.crunchy-toaster {
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  z-index: 9999;
+}
+
+.crunchy-toast {
+  min-width: 320px;
+  max-width: 420px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: #fff;
+  color: #0f172a;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.5;
+  box-shadow: 0 10px 40px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  backdrop-filter: blur(8px);
+}
+
+.crunchy-toast [data-icon] {
+  flex-shrink: 0;
+}
+
+.crunchy-toast-success {
+  border-left: 4px solid #10b981;
+}
+
+.crunchy-toast-error {
+  border-left: 4px solid #ef4444;
+}
+
+.crunchy-toast-loading {
+  border-left: 4px solid #2563eb;
+}
+
+/* Dark mode – react-hot-toast (blacker than page grey for contrast) */
+html.dark .crunchy-toast {
+  background: #0b1220;
+  color: #e2e8f0;
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+html.dark .crunchy-toast-success {
+  border-left-color: #34d399;
+}
+
+html.dark .crunchy-toast-error {
+  border-left-color: #f87171;
+}
+
+html.dark .crunchy-toast-loading {
+  border-left-color: #60a5fa;
+}
+
+/* ========== react-toastify ========== */
+.crunchy-toastify-container {
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  z-index: 9998;
+}
+
+.crunchy-toastify-container .crunchy-toastify-toast {
+  min-width: 320px;
+  max-width: 420px;
+  padding: 0;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 10px 40px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.crunchy-toastify-container.Toastify__toast-container--top-right {
+  top: 1rem;
+  right: 1rem;
+}
+
+.crunchy-toastify-container .crunchy-toastify-body {
+  padding: 14px 18px;
+  margin: 0;
+}
+
+/* react-toastify dark theme (blacker than page grey for contrast) */
+.crunchy-toastify-container.Toastify__toast-container .Toastify__toast--dark {
+  background: #0b1220;
+  color: #e2e8f0;
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.crunchy-toastify-container.Toastify__toast-container .Toastify__toast--success {
+  border-left: 4px solid #10b981;
+}
+
+.crunchy-toastify-container.Toastify__toast-container .Toastify__toast--error {
+  border-left: 4px solid #ef4444;
+}
+
+.crunchy-toastify-container.Toastify__toast-container .Toastify__toast--dark.Toastify__toast--success {
+  border-left-color: #34d399;
+}
+
+.crunchy-toastify-container.Toastify__toast-container .Toastify__toast--dark.Toastify__toast--error {
+  border-left-color: #f87171;
+}
+
+/* react-toastify: custom close button (used via closeButton prop) */
+.crunchy-toast-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin: -4px -4px 0 0;
+  padding: 0;
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.crunchy-toast-close-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.crunchy-toast-close-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #60a5fa;
+}
+
+/* Light theme: close button on light toasts */
+.crunchy-toast-close-btn:not([data-dark]) {
+  color: #64748b;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.crunchy-toast-close-btn:not([data-dark]):hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: #0f172a;
+}
