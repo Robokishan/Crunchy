@@ -28,11 +28,13 @@ export default function CreateCrawl({ setModal, modalIsOpen }: Props) {
         width: "30%",
         border: "none",
         minWidth: "400px",
+        maxWidth: "520px",
         top: "50%",
         left: "50%",
         right: "auto",
         bottom: "auto",
-        maxHeight: "calc(100vh - 15rem)",
+        maxHeight: "calc(100vh - 8rem)",
+        overflow: "auto",
         marginRight: "-50%",
         transform: "translate(-50%, -50%)",
         borderRadius: "16px",
@@ -119,12 +121,12 @@ export default function CreateCrawl({ setModal, modalIsOpen }: Props) {
         </div>
         <div className="mt-4 w-full">
           <TextareaAutosize
-            maxRows={15}
-            minRows={10}
+            maxRows={10}
+            minRows={4}
             name="name"
             placeholder="Paste URLs (one per line)"
             value={crawlPostData}
-            className="input-base min-h-[180px] w-full font-mono text-sm"
+            className="input-base min-h-[100px] w-full max-h-[240px] overflow-y-auto font-mono text-sm resize-y"
             onChange={handleChange}
           />
         </div>
