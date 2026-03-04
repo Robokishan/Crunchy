@@ -55,9 +55,9 @@ export const Connection = () => {
   );
 
   return (
-    <div className="mb-2 mt-2 rounded-md bg-white p-5 shadow-2xl">
+    <div className="mb-2 mt-2 rounded-md bg-white p-5 shadow-2xl dark:bg-gray-800 dark:shadow-gray-900">
       <div className="flex items-center gap-2">
-        <h1 className="mr-5 text-center text-xl text-gray-400">
+        <h1 className="mr-5 text-center text-xl text-gray-900 dark:text-gray-100">
           Find Connections
         </h1>
         <span className="relative flex h-3 w-3">
@@ -69,7 +69,7 @@ export const Connection = () => {
           )}
         </span>
       </div>
-      <hr className="my-3 h-px border-0 bg-gray-200 " />
+      <hr className="my-3 h-px border-0 bg-gray-200 dark:bg-gray-600" />
 
       <Grid container spacing={2}>
         <Grid item xs={8} md={4}>
@@ -87,7 +87,7 @@ export const Connection = () => {
                 type="text"
                 placeholder="Search"
                 onChange={(e) => setSourceValue(e.target.value)}
-                className="rounded-l border border-gray-300 bg-gray-200 px-4 py-2 focus:bg-white focus:outline-none"
+                className="rounded-l border border-gray-300 bg-gray-200 px-4 py-2 focus:bg-white focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:focus:bg-gray-600 dark:text-gray-100"
               />
             </FormControl>
             <FormControl variant="standard" sx={{ m: 1, minWidth: 120 }}>

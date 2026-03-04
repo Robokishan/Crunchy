@@ -455,7 +455,7 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
     enableExpandAll: false,
     renderDetailPanel: ({ row }) => {
       return (
-        <div className="grid w-[100vw] grid-cols-2 content-center gap-4 rounded-md border-2 border-solid border-slate-300 bg-white p-2">
+        <div className="grid w-[100vw] grid-cols-2 content-center gap-4 rounded-md border-2 border-solid border-slate-300 bg-white p-2 dark:border-gray-600 dark:bg-gray-800">
           <div className="flex h-32 w-32 items-center">
             <a
               href={row.original?.logo || "/image-broken.png"}
@@ -478,10 +478,10 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
                 key={`${row.original._id}-${index}-expand`}
                 className="flex flex-col"
               >
-                <span className="text-base capitalize text-gray-500">
+                <span className="text-base capitalize text-gray-500 dark:text-gray-300">
                   {key}:
                 </span>
-                <span className="overflow-hidden break-words text-gray-500">
+                <span className="overflow-hidden break-words text-gray-500 dark:text-gray-300">
                   {!value ? (
                     "-"
                   ) : typeof value === "string" ? (
@@ -533,7 +533,7 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
       );
     },
     renderBottomToolbarCustomActions: () => (
-      <Typography className="text-gray-400">
+      <Typography className="text-gray-600 dark:text-gray-300">
         Fetched {totalFetched} of {totalDBRowCount} total rows.
       </Typography>
     ),
@@ -550,12 +550,12 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
   });
 
   return (
-    <div className="mb-2 mt-2 rounded-md bg-white p-5 shadow-2xl">
+    <div className="mb-2 mt-2 rounded-md bg-white p-5 shadow-2xl dark:bg-gray-800 dark:shadow-gray-900">
       <div className="flex items-center gap-2">
-        <h1 className="mr-5 text-center text-xl text-gray-400">
+        <h1 className="mr-5 text-center text-xl text-gray-900 dark:text-gray-100">
           Company Details
         </h1>
-        <h3 className="mr-5 text-center text-lg text-gray-400">
+        <h3 className="mr-5 text-center text-lg text-gray-900 dark:text-gray-100">
           {totalDBRowCount}
         </h3>
         <Button
@@ -593,7 +593,7 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
         </span>
       </div>
       <Pending />
-      <hr className="my-3 h-px border-0 bg-gray-200 " />
+      <hr className="my-3 h-px border-0 bg-gray-200 dark:bg-gray-600" />
 
       {/* <SearchInput onSearch={onSearch} /> */}
 

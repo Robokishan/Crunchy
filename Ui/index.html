@@ -77,6 +77,13 @@
 </head>
 
 <body>
+  <script>
+    (function () {
+      var m = localStorage.getItem('crunchy-theme-mode');
+      var dark = m === 'dark' || (m !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (dark) document.documentElement.classList.add('dark');
+    })();
+  </script>
   <div id="root">
     <div id="initial-loader">
       <div class="loader-bars">

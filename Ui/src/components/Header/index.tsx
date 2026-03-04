@@ -1,4 +1,7 @@
+import DarkMode from "@mui/icons-material/DarkMode";
+import LightMode from "@mui/icons-material/LightMode";
 import MenuIcon from "@mui/icons-material/Menu";
+import SettingsBrightness from "@mui/icons-material/SettingsBrightness";
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -7,9 +10,11 @@ import IconButton from "@mui/material/IconButton";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import Toolbar from "@mui/material/Toolbar";
+import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { Link } from "react-router-dom";
 import * as React from "react";
+import { useThemeMode } from "~/contexts/ThemeContext";
 
 const pages = [
   {
@@ -27,12 +32,14 @@ const pages = [
 ];
 
 function ResponsiveAppBar() {
+  const { mode, setMode } = useThemeMode();
   const [anchorElNav, setAnchorElNav] = React.useState<null | HTMLElement>(
     null
   );
   const [anchorElUser, setAnchorElUser] = React.useState<null | HTMLElement>(
     null
   );
+  const isActive = (m: "system" | "dark" | "light") => mode === m;
 
   const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElNav(event.currentTarget);
@@ -87,6 +94,15 @@ function ResponsiveAppBar() {
                   </Link>
                 </MenuItem>
               ))}
+              <MenuItem onClick={() => { setMode("system"); handleCloseNavMenu(); }}>
+                <SettingsBrightness sx={{ mr: 1 }} /> System
+              </MenuItem>
+              <MenuItem onClick={() => { setMode("dark"); handleCloseNavMenu(); }}>
+                <DarkMode sx={{ mr: 1 }} /> Dark
+              </MenuItem>
+              <MenuItem onClick={() => { setMode("light"); handleCloseNavMenu(); }}>
+                <LightMode sx={{ mr: 1 }} /> Light
+              </MenuItem>
             </Menu>
           </Box>
 
@@ -104,6 +120,47 @@ function ResponsiveAppBar() {
                 </Button>
               </Link>
             ))}
+          </Box>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0 }}>
+            <Tooltip title="System theme">
+              <IconButton
+                color="inherit"
+                onClick={() => setMode("system")}
+                aria-label="Theme: System"
+                sx={{
+                  backgroundColor: isActive("system") ? "rgba(255,255,255,0.2)" : undefined,
+                  "&:hover": { backgroundColor: "rgba(255,255,255,0.1)" },
+                }}
+              >
+                <SettingsBrightness />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Dark mode">
+              <IconButton
+                color="inherit"
+                onClick={() => setMode("dark")}
+                aria-label="Theme: Dark"
+                sx={{
+                  backgroundColor: isActive("dark") ? "rgba(255,255,255,0.2)" : undefined,
+                  "&:hover": { backgroundColor: "rgba(255,255,255,0.1)" },
+                }}
+              >
+                <DarkMode />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Light mode">
+              <IconButton
+                color="inherit"
+                onClick={() => setMode("light")}
+                aria-label="Theme: Light"
+                sx={{
+                  backgroundColor: isActive("light") ? "rgba(255,255,255,0.2)" : undefined,
+                  "&:hover": { backgroundColor: "rgba(255,255,255,0.1)" },
+                }}
+              >
+                <LightMode />
+              </IconButton>
+            </Tooltip>
           </Box>
         </Toolbar>
       </Container>

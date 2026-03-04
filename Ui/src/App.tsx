@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
+import { ThemeContextProvider } from "~/contexts/ThemeContext";
 import Shield from "~/components/Shield";
 import Header from "~/components/Header";
 import { CompanyDetails } from "~/components/Companies";
@@ -27,13 +28,15 @@ export default function App() {
   }, []);
 
   return (
-    <Shield>
-      <Header />
+    <ThemeContextProvider>
+      <Shield>
+        <Header />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/connections" element={<Connection />} />
         <Route path="/settings" element={<Settings />} />
       </Routes>
-    </Shield>
+      </Shield>
+    </ThemeContextProvider>
   );
 }

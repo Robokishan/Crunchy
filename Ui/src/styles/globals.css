@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* After React mounts: white background, dark text */
+/* After React mounts: light theme */
 body.app-loaded {
   background: #fff;
   color: #111827;
@@ -10,4 +10,11 @@ body.app-loaded {
 body.app-loaded #root {
   background: #fff;
   min-height: 100vh;
+}
+
+/* Dark theme (when html has .dark) */
+html.dark body.app-loaded,
+html.dark body.app-loaded #root {
+  background: #111827;
+  color: #e5e7eb;
 }

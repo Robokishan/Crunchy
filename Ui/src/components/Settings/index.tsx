@@ -74,12 +74,12 @@ export const Settings = () => {
   }, [data?.data.interested_industries]);
 
   return (
-    <div className="mb-2 mt-2 rounded-md bg-white p-5 shadow-2xl">
+    <div className="mb-2 mt-2 rounded-md bg-white p-5 shadow-2xl dark:bg-gray-800 dark:shadow-gray-900">
       <Toaster />
       <div className="flex items-center gap-2">
-        <h1 className="mr-5 text-center text-xl text-gray-900">Settings</h1>
+        <h1 className="mr-5 text-center text-xl text-gray-900 dark:text-gray-100">Settings</h1>
       </div>
-      <hr className="my-3 h-px border-0 bg-gray-200 " />
+      <hr className="my-3 h-px border-0 bg-gray-200 dark:bg-gray-600" />
       <Switch
         checked={settingsView === "list"}
         onChange={() =>
@@ -88,7 +88,7 @@ export const Settings = () => {
         aria-label="toggle-ui-settings"
       />
       {isFetching || isLoading ? (
-        <h1 className="text-gray-900">Loading...</h1>
+        <h1 className="text-gray-900 dark:text-gray-100">Loading...</h1>
       ) : settingsView === "list" ? (
         <>
           <Grid2 container>
@@ -119,7 +119,7 @@ export const Settings = () => {
                             inputProps={{ "aria-labelledby": labelId }}
                           />
                         </ListItemIcon>
-                        <ListItemText id={labelId} primary={value} sx={{ color: "#111827" }} />
+                        <ListItemText id={labelId} primary={value} sx={{ color: "inherit" }} />
                       </ListItemButton>
                     </ListItem>
                   );
@@ -168,7 +168,7 @@ export const Settings = () => {
                             inputProps={{ "aria-labelledby": labelId }}
                           />
                         </ListItemIcon>
-                        <ListItemText id={labelId} primary={value} sx={{ color: "#111827" }} />
+                        <ListItemText id={labelId} primary={value} sx={{ color: "inherit" }} />
                       </ListItemButton>
                     </ListItem>
                   );
