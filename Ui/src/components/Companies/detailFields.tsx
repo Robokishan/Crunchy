@@ -66,7 +66,7 @@ export function getSortedDetailEntries(
     .map(({ key, value }) => ({ key, value }));
 }
 
-/** Mobile-only order: name, website, then rest with description + long_description right below lastfunding. */
+/** Mobile-only order: name, website, then rest; acquired immediately below lastfunding. */
 const MOBILE_ORDER_KEYS = [
   "name",
   "website",
@@ -76,10 +76,10 @@ const MOBILE_ORDER_KEYS = [
   "funding",
   "funding_usd",
   "lastfunding",
+  "acquired",
   "description",
   "long_description",
   "stocksymbol",
-  "acquired",
   "crunchbase_url",
   "tracxn_url",
   "created_at",
