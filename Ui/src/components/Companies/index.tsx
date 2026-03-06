@@ -754,7 +754,7 @@ export const CompanyDetails = ({ industries }: { industries: Industry[] }) => {
 
   return (
     <div
-      className={`mb-6 mt-4 w-full max-w-[1600px] min-w-0 md:mx-auto md:mt-6 ${isMobile ? "overflow-visible" : "overflow-x-clip"}`}
+      className={`mb-6 mt-4 w-full min-w-0 md:mt-6 ${isMobile ? "overflow-visible" : "overflow-x-clip"}`}
     >
       {!isMobile && (
         <>

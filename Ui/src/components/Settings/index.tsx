@@ -75,8 +75,8 @@ export const Settings = () => {
 
   return (
     <div
-      className="card-base mb-6 mt-4 w-full max-w-6xl box-border md:mx-auto"
-      style={{ minWidth: 0, maxWidth: "min(100%, 72rem)", overflowX: "clip", boxSizing: "border-box" }}
+      className="card-base -mx-2 mb-6 mt-4 min-w-0 box-border sm:-mx-4 w-[calc(100%+1rem)] sm:w-[calc(100%+2rem)]"
+      style={{ overflowX: "clip", boxSizing: "border-box" }}
     >
       <div className="flex min-w-0 flex-wrap items-center gap-3">
         <h1 className="page-title text-lg sm:text-xl">Settings</h1>
@@ -97,8 +97,25 @@ export const Settings = () => {
         <p className="text-slate-600 dark:text-slate-300">Loading...</p>
       ) : settingsView === "list" ? (
         <>
+          <div className="mb-4">
+            <Button
+              variant="contained"
+              onClick={() => save()}
+              sx={{
+                textTransform: "none",
+                fontWeight: 600,
+                borderRadius: 2,
+                px: 2.5,
+                py: 1.25,
+                boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+              }}
+            >
+              Save
+            </Button>
+          </div>
+          {/* List height: 100vh − header (~64px) − Settings title/toggle/hr/Save/card padding (~196px) ≈ 300px */}
           <Grid2 container spacing={2} sx={{ minWidth: 0 }}>
-            <Grid2 size={{ xs: 12, md: 4 }} sx={{ minWidth: 0 }}>
+            <Grid2 size={{ xs: 12, md: 6 }} sx={{ minWidth: 0 }}>
               <List
                 sx={{
                   width: "100%",
@@ -107,6 +124,10 @@ export const Settings = () => {
                   borderRadius: 2,
                   border: "1px solid",
                   borderColor: "divider",
+                  maxHeight: { xs: 480 },
+                  minHeight: { md: "max(320px, calc(100vh - 300px))" },
+                  height: { md: "max(320px, calc(100vh - 300px))" },
+                  overflow: "auto",
                 }}
               >
                 {data?.data.industries.map((value: any) => {
@@ -135,25 +156,7 @@ export const Settings = () => {
                 })}
               </List>
             </Grid2>
-
-            <Grid2 size={{ xs: 12 }} sx={{ minWidth: 0 }}>
-              <Button
-                variant="contained"
-                onClick={() => save()}
-                sx={{
-                  textTransform: "none",
-                  fontWeight: 600,
-                  borderRadius: 2,
-                  px: 2.5,
-                  py: 1.25,
-                  boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                }}
-              >
-                Save
-              </Button>
-            </Grid2>
-
-            <Grid2 size={{ xs: 12, md: 4 }} sx={{ minWidth: 0 }}>
+            <Grid2 size={{ xs: 12, md: 6 }} sx={{ minWidth: 0 }}>
               <List
                 sx={{
                   width: "100%",
@@ -162,6 +165,10 @@ export const Settings = () => {
                   borderRadius: 2,
                   border: "1px solid",
                   borderColor: "divider",
+                  maxHeight: { xs: 480 },
+                  minHeight: { md: "max(320px, calc(100vh - 300px))" },
+                  height: { md: "max(320px, calc(100vh - 300px))" },
+                  overflow: "auto",
                 }}
               >
                 {data?.data.interested_industries.map((value: any) => {
