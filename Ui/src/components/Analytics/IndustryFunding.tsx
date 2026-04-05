@@ -11,16 +11,18 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import crunchyClient from "~/utils/crunchyClient";
-import { CompanyDetailModal } from "~/components/Companies/CompanyDetailModal";
 import { CompanyCard } from "~/components/Companies/CompanyCard";
+import { CompanyDetailModal } from "~/components/Companies/CompanyDetailModal";
+import type { Industry } from "~/hooks/industryList";
 import type {
   CompayDetail,
   IndustryFundingAnalyticsResponse,
   IndustryFundingFilterState,
   IndustryFundingChartRow,
+  IndustryQueryGroup,
+  IndustryQueryGroupPayload,
 } from "~/utils/types";
-import type { Industry } from "~/hooks/industryList";
+import crunchyClient from "~/utils/crunchyClient";
 
 type CompanyApiResponse = {
   results: CompayDetail[];
@@ -28,6 +30,16 @@ type CompanyApiResponse = {
 };
 
 const DEFAULT_SORTING = [{ id: "created_at", desc: true }];
+
+function createIndustryGroup(overrides?: Partial<IndustryQueryGroup>): IndustryQueryGroup {
+  return {
+    id:
+      overrides?.id ??
+      `group-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+    operator: overrides?.operator ?? "any",
+    industries: overrides?.industries ?? [],
+  };
+}
 
 function parseNumber(value: string | null): number | undefined {
   if (value == null || value.trim() === "") return undefined;
@@ -44,20 +56,58 @@ function formatCurrency(value: number | undefined) {
   }).format(value);
 }
 
-function parseFilters(searchParams: URLSearchParams): IndustryFundingFilterState {
-  const industries = searchParams.get("industries")
-    ? searchParams
-        .get("industries")!
-        .split(",")
-        .map((value) => value.trim())
+function normalizeGroupIndustries(industries: string[]) {
+  return Array.from(
+    new Set(
+      industries
+        .map((industry) => industry.trim())
         .filter(Boolean)
-    : [];
+    )
+  );
+}
+
+function toIndustryGroupPayloads(
+  groups: IndustryQueryGroup[]
+): IndustryQueryGroupPayload[] {
+  return groups
+    .map((group) => ({
+      operator: group.operator === "all" ? "all" : "any",
+      industries: normalizeGroupIndustries(group.industries),
+    }))
+    .filter((group) => group.industries.length > 0);
+}
+
+function parseIndustryGroups(searchParams: URLSearchParams) {
+  const rawGroups = searchParams.get("industryGroups");
+  if (!rawGroups) return [createIndustryGroup()];
+
+  try {
+    const parsed = JSON.parse(rawGroups);
+    if (!Array.isArray(parsed)) return [createIndustryGroup()];
+    const groups = parsed
+      .filter((group): group is IndustryQueryGroupPayload =>
+        Boolean(group) && typeof group === "object" && Array.isArray(group.industries)
+      )
+      .map((group) =>
+        createIndustryGroup({
+          operator: group.operator === "all" ? "all" : "any",
+          industries: normalizeGroupIndustries(group.industries),
+        })
+      );
+    return groups.length > 0 ? groups : [createIndustryGroup()];
+  } catch {
+    return [createIndustryGroup()];
+  }
+}
+
+function parseFilters(searchParams: URLSearchParams): IndustryFundingFilterState {
   return {
     search: searchParams.get("search") ?? "",
     fundingMin: parseNumber(searchParams.get("fundingMin")),
     fundingMax: parseNumber(searchParams.get("fundingMax")),
-    industryMode: searchParams.get("industryMode") === "all" ? "all" : "any",
-    industries,
+    industryGroupOperator:
+      searchParams.get("industryGroupOperator") === "all" ? "all" : "any",
+    industryGroups: parseIndustryGroups(searchParams),
   };
 }
 
@@ -69,8 +119,11 @@ function buildSearchParams(
   if (filters.search.trim()) params.set("search", filters.search.trim());
   if (filters.fundingMin != null) params.set("fundingMin", String(filters.fundingMin));
   if (filters.fundingMax != null) params.set("fundingMax", String(filters.fundingMax));
-  params.set("industryMode", filters.industryMode);
-  if (filters.industries.length > 0) params.set("industries", filters.industries.join(","));
+  params.set("industryGroupOperator", filters.industryGroupOperator);
+  const payloadGroups = toIndustryGroupPayloads(filters.industryGroups);
+  if (payloadGroups.length > 0) {
+    params.set("industryGroups", JSON.stringify(payloadGroups));
+  }
   if (selectedIndustry) params.set("selectedIndustry", selectedIndustry);
   return params;
 }
@@ -79,13 +132,20 @@ function buildCompanyFilters(
   filters: IndustryFundingFilterState,
   selectedIndustry: string | null
 ) {
-  const queryFilters: Array<{ id: string; value: unknown; operator?: "any" | "all" }> = [];
+  const payloadGroups = toIndustryGroupPayloads(filters.industryGroups);
+  const queryFilters: Array<{
+    id: string;
+    value?: unknown;
+    operator?: "any" | "all";
+    groups?: IndustryQueryGroupPayload[];
+  }> = [];
+
   if (filters.search.trim()) queryFilters.push({ id: "name", value: filters.search.trim() });
-  if (filters.industries.length > 0) {
+  if (payloadGroups.length > 0) {
     queryFilters.push({
-      id: "industries",
-      value: filters.industries,
-      operator: filters.industryMode,
+      id: "industry_groups",
+      groups: payloadGroups,
+      operator: filters.industryGroupOperator,
     });
   }
   if (selectedIndustry) {
@@ -109,9 +169,22 @@ function buildChartParams(filters: IndustryFundingFilterState) {
     search: filters.search.trim() || undefined,
     fundingMin: filters.fundingMin,
     fundingMax: filters.fundingMax,
-    industryMode: filters.industryMode,
-    "industries[]": filters.industries,
+    industryGroupOperator: filters.industryGroupOperator,
+    industryGroups: JSON.stringify(toIndustryGroupPayloads(filters.industryGroups)),
   };
+}
+
+function buildQueryPreview(filters: IndustryFundingFilterState) {
+  const groups = toIndustryGroupPayloads(filters.industryGroups);
+  if (groups.length === 0) return "No base industry conditions.";
+
+  return groups
+    .map((group) => {
+      const joiner = group.operator === "all" ? " AND " : " OR ";
+      const items = group.industries.map((industry) => `"${industry}"`).join(joiner);
+      return group.industries.length > 1 ? `( ${items} )` : items;
+    })
+    .join(filters.industryGroupOperator === "all" ? " AND " : " OR ");
 }
 
 function IndustryBars({
@@ -215,18 +288,32 @@ export function IndustryFundingAnalytics({
   }, [draftSearch, filters, selectedIndustry, syncUrl]);
 
   const resetFilters = useCallback(() => {
-    const nextFilters = {
+    const nextFilters: IndustryFundingFilterState = {
       search: "",
       fundingMin: undefined,
       fundingMax: undefined,
-      industryMode: "any",
-      industries: [],
+      industryGroupOperator: "any",
+      industryGroups: [createIndustryGroup()],
     };
     setDraftSearch("");
     setSelectedIndustry(null);
     setFilters(nextFilters);
     syncUrl(nextFilters, null);
   }, [syncUrl]);
+
+  const updateFilters = useCallback(
+    (
+      updater: (current: IndustryFundingFilterState) => IndustryFundingFilterState,
+      nextSelectedIndustry = selectedIndustry
+    ) => {
+      setFilters((current) => {
+        const nextFilters = updater(current);
+        syncUrl(nextFilters, nextSelectedIndustry);
+        return nextFilters;
+      });
+    },
+    [selectedIndustry, syncUrl]
+  );
 
   const handleIndustrySelection = useCallback(
     (industry: string) => {
@@ -241,6 +328,8 @@ export function IndustryFundingAnalytics({
     () => industries.map((industry) => industry.industry).sort((a, b) => a.localeCompare(b)),
     [industries]
   );
+
+  const queryPreview = useMemo(() => buildQueryPreview(filters), [filters]);
 
   const chartQuery = useQuery({
     queryKey: ["industry-funding-chart", filters],
@@ -308,12 +397,11 @@ export function IndustryFundingAnalytics({
             type="number"
             value={filters.fundingMin ?? ""}
             onChange={(event) => {
-              const nextFilters = {
-                ...filters,
-                fundingMin: parseNumber(event.target.value) ?? undefined,
-              };
-              setFilters(nextFilters);
-              syncUrl(nextFilters, selectedIndustry);
+              const nextValue = parseNumber(event.target.value) ?? undefined;
+              updateFilters((current) => ({
+                ...current,
+                fundingMin: nextValue,
+              }));
             }}
             fullWidth
           />
@@ -322,71 +410,171 @@ export function IndustryFundingAnalytics({
             type="number"
             value={filters.fundingMax ?? ""}
             onChange={(event) => {
-              const nextFilters = {
-                ...filters,
-                fundingMax: parseNumber(event.target.value) ?? undefined,
-              };
-              setFilters(nextFilters);
-              syncUrl(nextFilters, selectedIndustry);
+              const nextValue = parseNumber(event.target.value) ?? undefined;
+              updateFilters((current) => ({
+                ...current,
+                fundingMax: nextValue,
+              }));
             }}
             fullWidth
           />
         </div>
 
-        <div className="mt-4">
-          <Autocomplete
-            multiple
-            options={industryOptions}
-            value={filters.industries}
-            onChange={(_, value) => {
-              const nextFilters = {
-                ...filters,
-                industries: Array.from(new Set(value)),
-              };
-              setFilters(nextFilters);
-              syncUrl(nextFilters, selectedIndustry);
-            }}
-            renderTags={(value, getTagProps) =>
-              value.map((option, index) => (
-                <Chip variant="outlined" label={option} {...getTagProps({ index })} key={option} />
-              ))
-            }
-            renderInput={(params) => (
-              <TextField {...params} label="Base industries filter" placeholder="All industries" />
-            )}
-          />
-        </div>
+        <div className="mt-5 rounded-card border border-slate-200/80 p-4 dark:border-slate-700/70">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                Industry Query Builder
+              </p>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                Build grouped logic like <code>(AI OR ML) AND (Software OR SaaS)</code>.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-500 dark:text-slate-400">Combine groups with</span>
+              <FormControl size="small" sx={{ minWidth: 180 }}>
+                <Select
+                  value={filters.industryGroupOperator}
+                  onChange={(event) => {
+                    const nextOperator = event.target.value as "any" | "all";
+                    updateFilters((current) => ({
+                      ...current,
+                      industryGroupOperator: nextOperator,
+                    }));
+                  }}
+                >
+                  <MenuItem value="any">OR between groups</MenuItem>
+                  <MenuItem value="all">AND between groups</MenuItem>
+                </Select>
+              </FormControl>
+            </div>
+          </div>
 
-        <div className="mt-4 grid gap-4 md:grid-cols-[minmax(240px,320px)_1fr]">
-          <FormControl fullWidth>
-            <InputLabel id="industry-mode-label">Industry match logic</InputLabel>
-            <Select
-              labelId="industry-mode-label"
-              label="Industry match logic"
-              value={filters.industryMode}
-              onChange={(event) => {
-                const nextFilters = {
-                  ...filters,
-                  industryMode: event.target.value as "any" | "all",
-                };
-                setFilters(nextFilters);
-                syncUrl(nextFilters, selectedIndustry);
+          <div className="mt-4 space-y-4">
+            {filters.industryGroups.map((group, index) => (
+              <div
+                key={group.id}
+                className="rounded-card border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-700 dark:bg-slate-800/50"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                    Group {index + 1}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <FormControl size="small" sx={{ minWidth: 180 }}>
+                      <InputLabel id={`group-operator-${group.id}`}>Inside group</InputLabel>
+                      <Select
+                        labelId={`group-operator-${group.id}`}
+                        label="Inside group"
+                        value={group.operator}
+                        onChange={(event) => {
+                          const nextOperator = event.target.value as "any" | "all";
+                          updateFilters((current) => ({
+                            ...current,
+                            industryGroups: current.industryGroups.map((item) =>
+                              item.id === group.id
+                                ? { ...item, operator: nextOperator }
+                                : item
+                            ),
+                          }));
+                        }}
+                      >
+                        <MenuItem value="any">OR inside group</MenuItem>
+                        <MenuItem value="all">AND inside group</MenuItem>
+                      </Select>
+                    </FormControl>
+                    {filters.industryGroups.length > 1 ? (
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={() => {
+                          updateFilters((current) => {
+                            const nextGroups = current.industryGroups.filter(
+                              (item) => item.id !== group.id
+                            );
+                            return {
+                              ...current,
+                              industryGroups:
+                                nextGroups.length > 0 ? nextGroups : [createIndustryGroup()],
+                            };
+                          });
+                        }}
+                      >
+                        Remove group
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="mt-3">
+                  <Autocomplete
+                    multiple
+                    options={industryOptions}
+                    value={group.industries}
+                    onChange={(_, value) => {
+                      const nextIndustries = normalizeGroupIndustries(value);
+                      updateFilters((current) => ({
+                        ...current,
+                        industryGroups: current.industryGroups.map((item) =>
+                          item.id === group.id
+                            ? { ...item, industries: nextIndustries }
+                            : item
+                        ),
+                      }));
+                    }}
+                    renderTags={(value, getTagProps) =>
+                      value.map((option, chipIndex) => (
+                        <Chip
+                          variant="outlined"
+                          label={option}
+                          {...getTagProps({ index: chipIndex })}
+                          key={`${group.id}-${option}`}
+                        />
+                      ))
+                    }
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label={`Industries in group ${index + 1}`}
+                        placeholder="Select industries"
+                      />
+                    )}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => {
+                updateFilters((current) => ({
+                  ...current,
+                  industryGroups: [...current.industryGroups, createIndustryGroup()],
+                }));
               }}
             >
-              <MenuItem value="any">Match any selected industry (OR)</MenuItem>
-              <MenuItem value="all">Match all selected industries (AND)</MenuItem>
-            </Select>
-          </FormControl>
-          <div className="flex items-center text-sm text-slate-500 dark:text-slate-400">
-            Build broader or narrower combinations for the base industry chips without changing the chart drilldown interaction.
+              Add group
+            </button>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Empty groups are ignored until you add industries.
+            </p>
+          </div>
+
+          <div className="mt-4 rounded-card border border-dashed border-slate-300 p-4 dark:border-slate-600">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Query Preview
+            </p>
+            <p className="mt-2 break-words font-mono text-sm text-slate-700 dark:text-slate-200">
+              {queryPreview}
+            </p>
           </div>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-          <span>
-            Chart metric: median funding_usd · Base industries use{" "}
-            <code>{filters.industryMode.toUpperCase()}</code>
-          </span>
+          <span>Chart metric: median funding_usd</span>
           {selectedIndustry ? (
             <Chip
               color="primary"
@@ -394,6 +582,9 @@ export function IndustryFundingAnalytics({
               label={`Drilldown: ${selectedIndustry}`}
               onDelete={() => handleIndustrySelection(selectedIndustry)}
             />
+          ) : null}
+          {selectedIndustry ? (
+            <span>Clicked chart industry is applied as an extra drilldown condition.</span>
           ) : null}
         </div>
       </section>

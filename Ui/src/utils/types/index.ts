@@ -33,15 +33,24 @@ export interface IndustryFundingAnalyticsResponse {
         search: string;
         fundingMin: number | null;
         fundingMax: number | null;
-        industryMode: "any" | "all";
-        industries: string[];
+        industryGroupOperator: "any" | "all";
+        industryGroups: IndustryQueryGroupPayload[];
     };
+}
+
+export interface IndustryQueryGroupPayload {
+    operator: "any" | "all";
+    industries: string[];
+}
+
+export interface IndustryQueryGroup extends IndustryQueryGroupPayload {
+    id: string;
 }
 
 export interface IndustryFundingFilterState {
     search: string;
     fundingMin?: number;
     fundingMax?: number;
-    industryMode: "any" | "all";
-    industries: string[];
+    industryGroupOperator: "any" | "all";
+    industryGroups: IndustryQueryGroup[];
 }

@@ -56,18 +56,26 @@ class TestIndustryFundingAnalytics:
         assert "Ignored" not in industries
 
     def test_filters_by_selected_industries(self):
-        results = IndustryFundingAnalyticsView.get_queryset(industries=["AI"])
+        results = IndustryFundingAnalyticsView.get_queryset(
+            industry_groups=[{"operator": "any", "industries": ["AI"]}],
+        )
 
         assert {row["industry"] for row in results} == {"AI", "Fintech"}
 
-    def test_supports_any_and_all_industry_modes(self):
+    def test_supports_any_and_all_group_operators(self):
         any_results = IndustryFundingAnalyticsView.get_queryset(
-            industries=["AI", "Fintech"],
-            industry_mode="any",
+            industry_groups=[
+                {"operator": "any", "industries": ["AI"]},
+                {"operator": "any", "industries": ["Fintech"]},
+            ],
+            industry_group_operator="any",
         )
         all_results = IndustryFundingAnalyticsView.get_queryset(
-            industries=["AI", "Fintech"],
-            industry_mode="all",
+            industry_groups=[
+                {"operator": "any", "industries": ["AI"]},
+                {"operator": "any", "industries": ["Fintech"]},
+            ],
+            industry_group_operator="all",
         )
 
         any_map = {row["industry"]: row for row in any_results}
@@ -78,6 +86,20 @@ class TestIndustryFundingAnalytics:
         assert all_map["AI"]["company_count"] == 1
         assert all_map["Fintech"]["company_count"] == 1
 
+    def test_supports_or_inside_group_and_and_between_groups(self):
+        results = IndustryFundingAnalyticsView.get_queryset(
+            industry_groups=[
+                {"operator": "any", "industries": ["AI", "Artificial Intelligence"]},
+                {"operator": "any", "industries": ["Fintech", "Software"]},
+            ],
+            industry_group_operator="all",
+        )
+
+        result_map = {row["industry"]: row for row in results}
+
+        assert result_map["AI"]["company_count"] == 1
+        assert result_map["Fintech"]["company_count"] == 1
+
     def test_list_response_shape_and_applied_filters(self):
         factory = APIRequestFactory()
         request = factory.get(
@@ -86,8 +108,8 @@ class TestIndustryFundingAnalytics:
                 "search": "Gamma",
                 "fundingMin": 15,
                 "fundingMax": 25,
-                "industryMode": "all",
-                "industries[]": ["AI"],
+                "industryGroupOperator": "all",
+                "industryGroups": '[{"operator":"any","industries":["AI"]}]',
             },
         )
         response = IndustryFundingAnalyticsView.as_view()(request)
@@ -98,8 +120,8 @@ class TestIndustryFundingAnalytics:
             "search": "Gamma",
             "fundingMin": 15.0,
             "fundingMax": 25.0,
-            "industryMode": "all",
-            "industries": ["AI"],
+            "industryGroupOperator": "all",
+            "industryGroups": [{"operator": "any", "industries": ["AI"]}],
         }
         assert response.data["results"] == [
             {
