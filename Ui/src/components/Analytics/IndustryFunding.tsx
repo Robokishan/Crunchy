@@ -840,13 +840,14 @@ export function IndustryFundingAnalytics({
               <thead className="bg-slate-50 dark:bg-slate-800/70">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Company</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Funding</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                     <button
                       type="button"
                       className="inline-flex items-center gap-1 text-left transition-colors hover:text-slate-700 dark:hover:text-slate-200"
                       onClick={() => handleSortChange("funding_usd")}
                     >
-                      <span>Funding</span>
+                      <span>Funding USD</span>
                       <span aria-hidden>{sortArrow(sorting, "funding_usd")}</span>
                     </button>
                   </th>
@@ -891,6 +892,9 @@ export function IndustryFundingAnalytics({
                           ) : null}
                         </div>
                       </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200">
+                      {company.funding || "-"}
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200">
                       {formatCurrency(company.funding_usd)}
