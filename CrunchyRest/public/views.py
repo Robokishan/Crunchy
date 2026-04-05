@@ -244,10 +244,8 @@ class CompaniesListView(generics.ListAPIView):
                 direction = -1 if sort_field.get("desc", False) else 1
                 if field == "funding_usd":
                     sort.append(("funding_usd", direction))
-                    sort.append(("funding_total_usd", direction))
                 elif field == "funding":
-                    sort.append(("funding", direction))
-                    sort.append(("funding_total", direction))
+                    sort.append(("funding_usd", direction))
                 else:
                     sort.append((field, direction))
         return sort
@@ -599,7 +597,7 @@ class IndustryFundingAnalyticsView(generics.GenericAPIView):
             ),
             reverse=True,
         )
-        return results[:100]
+        return results
 
     def list(self, request, *args, **kwargs):
         applied_filters = self._get_query_filters(request)

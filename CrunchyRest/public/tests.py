@@ -136,13 +136,13 @@ class TestIndustryFundingAnalytics:
             },
         ]
 
-    def test_caps_results_at_100_industries(self):
+    def test_returns_all_matching_industries_for_chart(self):
         Crunchbase.objects.all().delete()
         for index in range(105):
             create_company(f"Company{index}", [f"Industry {index}"], index + 1)
 
         results = IndustryFundingAnalyticsView.get_queryset()
 
-        assert len(results) == 100
+        assert len(results) == 105
         assert results[0]["industry"] == "Industry 104"
-        assert results[-1]["industry"] == "Industry 5"
+        assert results[-1]["industry"] == "Industry 0"
