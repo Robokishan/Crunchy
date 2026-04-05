@@ -38,11 +38,31 @@ function formatCompactCurrency(value: number) {
   }).format(value);
 }
 
-function formatPercent(value: number) {
+function formatPercent(
+  value: number,
+  {
+    minimumFractionDigits = 0,
+    maximumFractionDigits = 0,
+  }: {
+    minimumFractionDigits?: number;
+    maximumFractionDigits?: number;
+  } = {}
+) {
   return new Intl.NumberFormat("en-US", {
     style: "percent",
-    maximumFractionDigits: 0,
+    minimumFractionDigits,
+    maximumFractionDigits,
   }).format(value);
+}
+
+function formatRailPercent(value: number) {
+  if (value < 0.01) {
+    return formatPercent(value, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  }
+  if (value < 0.1) {
+    return formatPercent(value, { maximumFractionDigits: 1 });
+  }
+  return formatPercent(value);
 }
 
 function formatCount(value: number) {
@@ -86,7 +106,7 @@ function RailShareLabel({ value }: { value: number }) {
         whiteSpace: "nowrap",
       }}
     >
-      {formatPercent(value)}
+      {formatRailPercent(value)}
     </Typography>
   );
 }
@@ -154,7 +174,7 @@ const IndustryBreakdownRow = memo(function IndustryBreakdownRow({
 
             <Stack direction="row" spacing={1.25} alignItems="center" flexShrink={0}>
               <Chip
-                label={`${formatCount(industry.company_count)} tagged`}
+                label={`${formatCount(industry.company_count)} companies`}
                 size="small"
                 sx={{
                   height: 28,
@@ -470,7 +490,7 @@ export function FundingBracketDistribution() {
                       >
                         <Stack spacing={0.35} sx={{ width: "100%" }}>
                           <Tooltip
-                            title={`${bracket.label}: ${formatCount(bracket.company_count)} companies, ${formatPercent(bracket.share_of_funded_companies)}`}
+                            title={`${bracket.label}: ${formatCount(bracket.company_count)} companies, ${formatRailPercent(bracket.share_of_funded_companies)}`}
                           >
                             <Box
                               sx={{
@@ -609,7 +629,7 @@ export function FundingBracketDistribution() {
                         },
                         {
                           label: "Share of funded companies",
-                          value: formatPercent(selectedBracket.share_of_funded_companies),
+                          value: formatRailPercent(selectedBracket.share_of_funded_companies),
                         },
                         {
                           label: "Median funding",

@@ -195,6 +195,8 @@ export function IndustryOverviewAnalytics() {
         </div>
       </section>
 
+      <FundingBracketDistribution />
+
       <div className="grid gap-6 xl:grid-cols-2">
         <OverviewBars
           title="Industry By Company Count"
@@ -212,8 +214,6 @@ export function IndustryOverviewAnalytics() {
           titleFor={(row) => formatCurrency(row.total_funding_usd)}
         />
       </div>
-
-      <FundingBracketDistribution />
     </div>
   );
 }
