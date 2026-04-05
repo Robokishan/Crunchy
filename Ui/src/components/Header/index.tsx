@@ -30,6 +30,10 @@ const pages = [
     href: "/connections",
   },
   {
+    name: "Analytics",
+    href: "/analytics/industry-funding",
+  },
+  {
     name: "Settings",
     href: "/settings",
   },

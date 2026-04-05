@@ -7,6 +7,7 @@ import Header from "~/components/Header";
 import { CompanyDetails } from "~/components/Companies";
 import { Settings } from "~/components/Settings";
 import { Connection } from "~/components/Connection";
+import { IndustryFundingAnalytics } from "~/components/Analytics/IndustryFunding";
 import { useQuery } from "@tanstack/react-query";
 import crunchyClient from "~/utils/crunchyClient";
 import type { Industry } from "~/hooks/industryList";
@@ -23,6 +24,18 @@ function Home() {
   return <CompanyDetails industries={industries} />;
 }
 
+function IndustryFundingPage() {
+  const { data: industries = [] } = useQuery({
+    queryKey: ["industries-initial"],
+    queryFn: async () => {
+      const { data } = await crunchyClient.get<Industry[]>("/public/industries");
+      return data;
+    },
+  });
+
+  return <IndustryFundingAnalytics industries={industries} />;
+}
+
 export default function App() {
   useEffect(() => {
     document.body.classList.add("app-loaded");
@@ -37,6 +50,7 @@ export default function App() {
             <main className="w-full min-w-0 max-w-[100vw] flex-1 overflow-x-clip px-2 sm:px-4">
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="/analytics/industry-funding" element={<IndustryFundingPage />} />
               <Route path="/connections" element={<Connection />} />
               <Route path="/settings" element={<Settings />} />
             </Routes>

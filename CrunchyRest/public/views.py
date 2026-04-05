@@ -14,6 +14,28 @@ from bson.codec_options import CodecOptions
 import regex as re
 from django.core.paginator import Paginator as DjangoPaginator
 from django.utils.functional import cached_property
+from statistics import median
+
+
+def build_industry_query(industries, operator='all'):
+    cleaned_industries = [
+        industry.strip()
+        for industry in (industries or [])
+        if isinstance(industry, str) and industry.strip()
+    ]
+    if not cleaned_industries:
+        return None
+
+    clauses = [
+        {'industries': {'$regex': f'^{re.escape(industry)}$', '$options': 'i'}}
+        for industry in cleaned_industries
+    ]
+
+    if operator == 'any':
+        return {'$or': clauses}
+    if len(clauses) == 1:
+        return clauses[0]
+    return {'$and': clauses}
 
 
 class CustomDjangoPaginator(DjangoPaginator):
@@ -87,12 +109,8 @@ class CompaniesListView(generics.ListAPIView):
         page = [self._crunchbase_doc_to_company_shape(d) for d in queryset]
         return Response(self._serialize_companies(page))
 
-    def get_queryset(self):
-
-        filters = self.request.GET.get('filters', None)
-        sorting = self.request.GET.get('sorting', None)
-        globalFilter = self.request.GET.get('search', None)
-
+    @staticmethod
+    def build_root_query(filters=None, globalFilter=None):
         root_query = {}
         mongo_query = []
         if globalFilter != 'null' and globalFilter is not None:
@@ -117,10 +135,12 @@ class CompaniesListView(generics.ListAPIView):
                     })
                 elif filter["id"] == "industries":
                     industries = filter["value"]
-                    for industry in industries:
-                        mongo_query.append({
-                            'industries': {'$regex': f'^{re.escape(industry)}$', '$options': 'i'}
-                        })
+                    industry_query = build_industry_query(
+                        industries,
+                        filter.get("operator", "all"),
+                    )
+                    if industry_query:
+                        mongo_query.append(industry_query)
                 elif filter["id"] == "lastfunding":
                     mongo_query.append({
                         'lastfunding': {'$regex': filter["value"], '$options': 'i'}
@@ -163,10 +183,13 @@ class CompaniesListView(generics.ListAPIView):
                     })
             if len(mongo_query) > 0:
                 root_query['$and'] = mongo_query
+        return root_query
 
+    @staticmethod
+    def build_sort(sorting=None):
         sort = []
         if sorting:
-            sorting = json.loads(sorting)
+            sorting = json.loads(sorting) if isinstance(sorting, str) else sorting
             for sort_field in sorting:
                 field = sort_field["id"]
                 direction = -1 if sort_field.get("desc", False) else 1
@@ -178,6 +201,16 @@ class CompaniesListView(generics.ListAPIView):
                     sort.append(("funding_total", direction))
                 else:
                     sort.append((field, direction))
+        return sort
+
+    def get_queryset(self):
+        filters = self.request.GET.get('filters', None)
+        sorting = self.request.GET.get('sorting', None)
+        globalFilter = self.request.GET.get('search', None)
+
+        root_query = self.build_root_query(filters=filters, globalFilter=globalFilter)
+
+        sort = self.build_sort(sorting=sorting)
 
         options = CodecOptions(document_class=dict)
         cursor = Crunchbase.objects.mongo_with_options(codec_options=options).find(
@@ -364,6 +397,163 @@ class IndustryList(generics.ListAPIView):
         sortBy = request.GET.get('sortBy', 'default')
 
         return Response(self.get_queryset(selected, sortBy))
+
+
+class IndustryFundingAnalyticsView(generics.GenericAPIView):
+    class QuerySerializer(serializers.Serializer):
+        search = serializers.CharField(required=False, allow_blank=True)
+        fundingMin = serializers.FloatField(required=False, allow_null=True)
+        fundingMax = serializers.FloatField(required=False, allow_null=True)
+        industryMode = serializers.ChoiceField(
+            choices=['any', 'all'],
+            required=False,
+        )
+        industries = serializers.ListField(
+            child=serializers.CharField(), required=False
+        )
+
+    @staticmethod
+    def _coerce_float(value):
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    @classmethod
+    def _get_query_filters(cls, request):
+        industries = [
+            industry.strip()
+            for industry in request.GET.getlist('industries[]', [])
+            if industry and industry.strip()
+        ]
+        search = (request.GET.get('search', '') or '').strip()
+        funding_min = cls._coerce_float(request.GET.get('fundingMin'))
+        funding_max = cls._coerce_float(request.GET.get('fundingMax'))
+        industry_mode = request.GET.get('industryMode', 'any')
+        if industry_mode not in ('any', 'all'):
+            industry_mode = 'any'
+        return {
+            'search': search,
+            'funding_min': funding_min,
+            'funding_max': funding_max,
+            'industry_mode': industry_mode,
+            'industries': industries,
+        }
+
+    @classmethod
+    def build_match_query(
+        cls,
+        search='',
+        funding_min=None,
+        funding_max=None,
+        industries=None,
+        industry_mode='any',
+    ):
+        filters = []
+        if search:
+            filters.append({
+                '$or': [
+                    {'name': {'$regex': search, '$options': 'i'}},
+                    {'description': {'$regex': search, '$options': 'i'}},
+                    {'long_description': {'$regex': search, '$options': 'i'}},
+                    {'founders': {'$regex': search, '$options': 'i'}},
+                    {'website': {'$regex': search, '$options': 'i'}},
+                ]
+            })
+
+        if funding_min is not None:
+            filters.append({'funding_usd': {'$gte': funding_min}})
+        if funding_max is not None:
+            filters.append({'funding_usd': {'$lte': funding_max}})
+
+        industry_query = build_industry_query(industries, industry_mode)
+        if industry_query:
+            filters.append(industry_query)
+
+        filters.extend([
+            {'funding_usd': {'$ne': None}},
+            {'funding_usd': {'$gt': 0}},
+            {'industries': {'$exists': True, '$ne': []}},
+        ])
+
+        if not filters:
+            return {}
+        if len(filters) == 1:
+            return filters[0]
+        return {'$and': filters}
+
+    @classmethod
+    def get_queryset(
+        cls,
+        search='',
+        funding_min=None,
+        funding_max=None,
+        industries=None,
+        industry_mode='any',
+    ):
+        match_query = cls.build_match_query(
+            search=search,
+            funding_min=funding_min,
+            funding_max=funding_max,
+            industries=industries,
+            industry_mode=industry_mode,
+        )
+        pipeline = [
+            {'$match': match_query},
+            {'$unwind': '$industries'},
+            {
+                '$group': {
+                    '_id': '$industries',
+                    'company_count': {'$sum': 1},
+                    'funding_values': {'$push': '$funding_usd'},
+                }
+            },
+        ]
+
+        results = []
+        for row in Crunchbase.objects.mongo_aggregate(pipeline):
+            values = sorted(
+                value for value in row.get('funding_values', [])
+                if isinstance(value, (int, float)) and value > 0
+            )
+            if not values:
+                continue
+            results.append({
+                'industry': row.get('_id'),
+                'company_count': row.get('company_count', 0),
+                'median_funding_usd': float(median(values)),
+            })
+
+        results.sort(
+            key=lambda item: (
+                item['median_funding_usd'],
+                item['company_count'],
+                item['industry'] or '',
+            ),
+            reverse=True,
+        )
+        return results[:100]
+
+    def list(self, request, *args, **kwargs):
+        applied_filters = self._get_query_filters(request)
+        results = self.get_queryset(**applied_filters)
+        payload = {
+            'metric': 'median_funding_usd',
+            'results': results,
+            'applied_filters': {
+                'search': applied_filters['search'],
+                'fundingMin': applied_filters['funding_min'],
+                'fundingMax': applied_filters['funding_max'],
+                'industryMode': applied_filters['industry_mode'],
+                'industries': applied_filters['industries'],
+            },
+        }
+        serializer = self.QuerySerializer(data=payload['applied_filters'])
+        serializer.is_valid(raise_exception=True)
+        return Response(payload)
+
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
 
 
 @ api_view(['GET'])

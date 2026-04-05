@@ -1,0 +1,496 @@
+import {
+  Autocomplete,
+  Chip,
+  CircularProgress,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  TextField,
+} from "@mui/material";
+import { useQuery } from "@tanstack/react-query";
+import { useCallback, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import crunchyClient from "~/utils/crunchyClient";
+import { CompanyDetailModal } from "~/components/Companies/CompanyDetailModal";
+import { CompanyCard } from "~/components/Companies/CompanyCard";
+import type {
+  CompayDetail,
+  IndustryFundingAnalyticsResponse,
+  IndustryFundingFilterState,
+  IndustryFundingChartRow,
+} from "~/utils/types";
+import type { Industry } from "~/hooks/industryList";
+
+type CompanyApiResponse = {
+  results: CompayDetail[];
+  count: number;
+};
+
+const DEFAULT_SORTING = [{ id: "created_at", desc: true }];
+
+function parseNumber(value: string | null): number | undefined {
+  if (value == null || value.trim() === "") return undefined;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function formatCurrency(value: number | undefined) {
+  if (value == null || !Number.isFinite(value)) return "-";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function parseFilters(searchParams: URLSearchParams): IndustryFundingFilterState {
+  const industries = searchParams.get("industries")
+    ? searchParams
+        .get("industries")!
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean)
+    : [];
+  return {
+    search: searchParams.get("search") ?? "",
+    fundingMin: parseNumber(searchParams.get("fundingMin")),
+    fundingMax: parseNumber(searchParams.get("fundingMax")),
+    industryMode: searchParams.get("industryMode") === "all" ? "all" : "any",
+    industries,
+  };
+}
+
+function buildSearchParams(
+  filters: IndustryFundingFilterState,
+  selectedIndustry: string | null
+) {
+  const params = new URLSearchParams();
+  if (filters.search.trim()) params.set("search", filters.search.trim());
+  if (filters.fundingMin != null) params.set("fundingMin", String(filters.fundingMin));
+  if (filters.fundingMax != null) params.set("fundingMax", String(filters.fundingMax));
+  params.set("industryMode", filters.industryMode);
+  if (filters.industries.length > 0) params.set("industries", filters.industries.join(","));
+  if (selectedIndustry) params.set("selectedIndustry", selectedIndustry);
+  return params;
+}
+
+function buildCompanyFilters(
+  filters: IndustryFundingFilterState,
+  selectedIndustry: string | null
+) {
+  const queryFilters: Array<{ id: string; value: unknown; operator?: "any" | "all" }> = [];
+  if (filters.search.trim()) queryFilters.push({ id: "name", value: filters.search.trim() });
+  if (filters.industries.length > 0) {
+    queryFilters.push({
+      id: "industries",
+      value: filters.industries,
+      operator: filters.industryMode,
+    });
+  }
+  if (selectedIndustry) {
+    queryFilters.push({
+      id: "industries",
+      value: [selectedIndustry],
+      operator: "all",
+    });
+  }
+  if (filters.fundingMin != null || filters.fundingMax != null) {
+    queryFilters.push({
+      id: "funding_usd",
+      value: [filters.fundingMin ?? undefined, filters.fundingMax ?? undefined],
+    });
+  }
+  return queryFilters;
+}
+
+function buildChartParams(filters: IndustryFundingFilterState) {
+  return {
+    search: filters.search.trim() || undefined,
+    fundingMin: filters.fundingMin,
+    fundingMax: filters.fundingMax,
+    industryMode: filters.industryMode,
+    "industries[]": filters.industries,
+  };
+}
+
+function IndustryBars({
+  rows,
+  selectedIndustry,
+  onSelect,
+}: {
+  rows: IndustryFundingChartRow[];
+  selectedIndustry: string | null;
+  onSelect: (industry: string) => void;
+}) {
+  const maxFunding = rows.reduce((max, row) => Math.max(max, row.median_funding_usd), 0);
+
+  if (rows.length === 0) {
+    return (
+      <div className="rounded-card border border-dashed border-slate-300 p-6 text-sm text-slate-500 dark:border-slate-600 dark:text-slate-400">
+        No industries match the current filters.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {rows.map((row) => {
+        const ratio = maxFunding > 0 ? (row.median_funding_usd / maxFunding) * 100 : 0;
+        const isSelected = row.industry === selectedIndustry;
+        return (
+          <button
+            key={row.industry}
+            type="button"
+            onClick={() => onSelect(row.industry)}
+            className={`group flex w-full items-center gap-3 rounded-card border px-4 py-3 text-left transition ${
+              isSelected
+                ? "border-brand-500 bg-brand-50 dark:border-brand-400 dark:bg-brand-500/10"
+                : "border-slate-200 bg-white hover:border-brand-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/40 dark:hover:border-brand-500/60 dark:hover:bg-slate-800"
+            }`}
+          >
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
+                    {row.industry}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {row.company_count} companies
+                  </p>
+                </div>
+                <span className="shrink-0 text-sm font-medium text-slate-700 dark:text-slate-200">
+                  {formatCurrency(row.median_funding_usd)}
+                </span>
+              </div>
+              <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    isSelected
+                      ? "bg-gradient-to-r from-brand-500 to-brand-700 dark:from-brand-400 dark:to-cyan-300"
+                      : "bg-gradient-to-r from-sky-500 to-blue-700 dark:from-sky-400 dark:to-blue-300"
+                  }`}
+                  style={{ width: `${Math.max(ratio, 4)}%` }}
+                />
+              </div>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function IndustryFundingAnalytics({
+  industries,
+}: {
+  industries: Industry[];
+}) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [filters, setFilters] = useState<IndustryFundingFilterState>(() =>
+    parseFilters(searchParams)
+  );
+  const [selectedIndustry, setSelectedIndustry] = useState<string | null>(
+    () => searchParams.get("selectedIndustry") ?? null
+  );
+  const [draftSearch, setDraftSearch] = useState(filters.search);
+  const [detailCompany, setDetailCompany] = useState<CompayDetail | null>(null);
+
+  const syncUrl = useCallback(
+    (nextFilters: IndustryFundingFilterState, nextSelectedIndustry: string | null) => {
+      setSearchParams(buildSearchParams(nextFilters, nextSelectedIndustry), {
+        replace: true,
+      });
+    },
+    [setSearchParams]
+  );
+
+  const applyFilters = useCallback(() => {
+    const nextFilters = {
+      ...filters,
+      search: draftSearch,
+    };
+    setFilters(nextFilters);
+    syncUrl(nextFilters, selectedIndustry);
+  }, [draftSearch, filters, selectedIndustry, syncUrl]);
+
+  const resetFilters = useCallback(() => {
+    const nextFilters = {
+      search: "",
+      fundingMin: undefined,
+      fundingMax: undefined,
+      industryMode: "any",
+      industries: [],
+    };
+    setDraftSearch("");
+    setSelectedIndustry(null);
+    setFilters(nextFilters);
+    syncUrl(nextFilters, null);
+  }, [syncUrl]);
+
+  const handleIndustrySelection = useCallback(
+    (industry: string) => {
+      const nextSelected = selectedIndustry === industry ? null : industry;
+      setSelectedIndustry(nextSelected);
+      syncUrl(filters, nextSelected);
+    },
+    [filters, selectedIndustry, syncUrl]
+  );
+
+  const industryOptions = useMemo(
+    () => industries.map((industry) => industry.industry).sort((a, b) => a.localeCompare(b)),
+    [industries]
+  );
+
+  const chartQuery = useQuery({
+    queryKey: ["industry-funding-chart", filters],
+    queryFn: async () => {
+      const { data } = await crunchyClient.get<IndustryFundingAnalyticsResponse>(
+        "/public/analytics/industry-funding",
+        {
+          params: buildChartParams(filters),
+        }
+      );
+      return data;
+    },
+  });
+
+  const companyQuery = useQuery({
+    queryKey: ["industry-funding-companies", filters, selectedIndustry],
+    queryFn: async () => {
+      const { data } = await crunchyClient.get<CompanyApiResponse>("/public/comp", {
+        params: {
+          filters: JSON.stringify(buildCompanyFilters(filters, selectedIndustry)),
+          sorting: JSON.stringify(DEFAULT_SORTING),
+          page: 1,
+        },
+      });
+      return data;
+    },
+  });
+
+  const chartRows = chartQuery.data?.results ?? [];
+  const companies = companyQuery.data?.results ?? [];
+
+  return (
+    <div className="mx-auto my-4 flex w-full max-w-7xl flex-col gap-6">
+      <section className="card-base">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="page-title">Industry Funding Analytics</h1>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+              Median funding by industry from MongoDB using the existing{" "}
+              <code>funding_usd</code> field.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" className="btn-secondary" onClick={applyFilters}>
+              Apply filters
+            </button>
+            <button type="button" className="btn-secondary" onClick={resetFilters}>
+              Reset
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(220px,1fr)_minmax(220px,1fr)]">
+          <TextField
+            label="Search companies"
+            value={draftSearch}
+            onChange={(event) => setDraftSearch(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") applyFilters();
+            }}
+            fullWidth
+          />
+          <TextField
+            label="Funding min (USD)"
+            type="number"
+            value={filters.fundingMin ?? ""}
+            onChange={(event) => {
+              const nextFilters = {
+                ...filters,
+                fundingMin: parseNumber(event.target.value) ?? undefined,
+              };
+              setFilters(nextFilters);
+              syncUrl(nextFilters, selectedIndustry);
+            }}
+            fullWidth
+          />
+          <TextField
+            label="Funding max (USD)"
+            type="number"
+            value={filters.fundingMax ?? ""}
+            onChange={(event) => {
+              const nextFilters = {
+                ...filters,
+                fundingMax: parseNumber(event.target.value) ?? undefined,
+              };
+              setFilters(nextFilters);
+              syncUrl(nextFilters, selectedIndustry);
+            }}
+            fullWidth
+          />
+        </div>
+
+        <div className="mt-4">
+          <Autocomplete
+            multiple
+            options={industryOptions}
+            value={filters.industries}
+            onChange={(_, value) => {
+              const nextFilters = {
+                ...filters,
+                industries: Array.from(new Set(value)),
+              };
+              setFilters(nextFilters);
+              syncUrl(nextFilters, selectedIndustry);
+            }}
+            renderTags={(value, getTagProps) =>
+              value.map((option, index) => (
+                <Chip variant="outlined" label={option} {...getTagProps({ index })} key={option} />
+              ))
+            }
+            renderInput={(params) => (
+              <TextField {...params} label="Base industries filter" placeholder="All industries" />
+            )}
+          />
+        </div>
+
+        <div className="mt-4 grid gap-4 md:grid-cols-[minmax(240px,320px)_1fr]">
+          <FormControl fullWidth>
+            <InputLabel id="industry-mode-label">Industry match logic</InputLabel>
+            <Select
+              labelId="industry-mode-label"
+              label="Industry match logic"
+              value={filters.industryMode}
+              onChange={(event) => {
+                const nextFilters = {
+                  ...filters,
+                  industryMode: event.target.value as "any" | "all",
+                };
+                setFilters(nextFilters);
+                syncUrl(nextFilters, selectedIndustry);
+              }}
+            >
+              <MenuItem value="any">Match any selected industry (OR)</MenuItem>
+              <MenuItem value="all">Match all selected industries (AND)</MenuItem>
+            </Select>
+          </FormControl>
+          <div className="flex items-center text-sm text-slate-500 dark:text-slate-400">
+            Build broader or narrower combinations for the base industry chips without changing the chart drilldown interaction.
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+          <span>
+            Chart metric: median funding_usd · Base industries use{" "}
+            <code>{filters.industryMode.toUpperCase()}</code>
+          </span>
+          {selectedIndustry ? (
+            <Chip
+              color="primary"
+              variant="outlined"
+              label={`Drilldown: ${selectedIndustry}`}
+              onDelete={() => handleIndustrySelection(selectedIndustry)}
+            />
+          ) : null}
+        </div>
+      </section>
+
+      <section className="card-base">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="page-title">Industry Distribution</h2>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+              Click a bar to filter the company table below.
+            </p>
+          </div>
+          {chartQuery.isFetching ? <CircularProgress size={24} /> : null}
+        </div>
+        <div className="mt-5 max-h-[42rem] overflow-y-auto pr-1">
+          <IndustryBars
+            rows={chartRows}
+            selectedIndustry={selectedIndustry}
+            onSelect={handleIndustrySelection}
+          />
+        </div>
+      </section>
+
+      <section className="card-base">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="page-title">Top 100 Companies</h2>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+              Sorted by <code>created_at desc</code>. Results update with the analytics filters and chart drilldown.
+            </p>
+          </div>
+          {companyQuery.isFetching ? <CircularProgress size={24} /> : null}
+        </div>
+
+        <div className="mt-4 hidden overflow-hidden rounded-card border border-slate-200 dark:border-slate-700 lg:block">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+              <thead className="bg-slate-50 dark:bg-slate-800/70">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Company</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Funding</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Industries</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Created</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-700 dark:bg-slate-900/20">
+                {companies.map((company) => (
+                  <tr
+                    key={company._id}
+                    className="cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                    onClick={() => setDetailCompany(company)}
+                  >
+                    <td className="px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-slate-800 dark:text-slate-100">{company.name}</p>
+                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">{company.website || "-"}</p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200">
+                      {formatCurrency(company.funding_usd)}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                      {(company.industries ?? []).join(", ") || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                      {company.created_at ? new Date(company.created_at).toLocaleDateString() : "-"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 lg:hidden">
+          {companies.map((company) => (
+            <CompanyCard
+              key={company._id}
+              company={company}
+              onExport={() => undefined}
+              onCardClick={setDetailCompany}
+            />
+          ))}
+        </div>
+
+        {!companyQuery.isFetching && companies.length === 0 ? (
+          <div className="mt-4 rounded-card border border-dashed border-slate-300 p-6 text-sm text-slate-500 dark:border-slate-600 dark:text-slate-400">
+            No companies match the current analytics filters.
+          </div>
+        ) : null}
+      </section>
+
+      <CompanyDetailModal
+        company={detailCompany}
+        isOpen={detailCompany != null}
+        onClose={() => setDetailCompany(null)}
+      />
+    </div>
+  );
+}

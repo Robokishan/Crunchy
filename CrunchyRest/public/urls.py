@@ -3,9 +3,11 @@ from public import views
 from public.views import CompaniesListView
 from public.views import SettingsList
 from public.views import IndustryList
+from public.views import IndustryFundingAnalyticsView
 
 urlpatterns = [
     path('comp', CompaniesListView.as_view()),
+    path('analytics/industry-funding', IndustryFundingAnalyticsView.as_view()),
     path('connection', views.connection),
     path('settings', SettingsList.as_view()),
     path('pending', views.PendingInQueue),
