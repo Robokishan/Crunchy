@@ -30,6 +30,10 @@ const pages = [
     href: "/connections",
   },
   {
+    name: "Analytics",
+    href: "/analytics/overview",
+  },
+  {
     name: "Settings",
     href: "/settings",
   },
