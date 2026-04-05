@@ -2,7 +2,7 @@ import pytest
 from rest_framework.test import APIRequestFactory
 
 from databucket.models import Crunchbase
-from public.views import IndustryFundingAnalyticsView
+from public.views import IndustryFundingAnalyticsView, IndustryOverviewAnalyticsView
 
 
 def create_company(name, industries, funding_usd, created_at=None):
@@ -110,6 +110,18 @@ class TestIndustryFundingAnalytics:
         assert "Fintech" not in result_map
         assert result_map["AI"]["company_count"] == 2
 
+    def test_industry_total_mode_filters_on_aggregated_industry_funding(self):
+        results = IndustryFundingAnalyticsView.get_queryset(
+            funding_max=25,
+            analytics_mode="industry_total",
+        )
+
+        result_map = {row["industry"]: row for row in results}
+
+        assert "AI" not in result_map
+        assert result_map["Fintech"]["total_funding_usd"] == 25
+        assert result_map["Fintech"]["company_count"] == 2
+
     def test_list_response_shape_and_applied_filters(self):
         factory = APIRequestFactory()
         request = factory.get(
@@ -118,6 +130,7 @@ class TestIndustryFundingAnalytics:
                 "search": "Gamma",
                 "fundingMin": 15,
                 "fundingMax": 25,
+                "analyticsMode": "legacy",
                 "industryGroupOperator": "all",
                 "industryGroups": '[{"operator":"any","industries":["AI"]}]',
                 "excludedIndustries": '["Software"]',
@@ -131,6 +144,7 @@ class TestIndustryFundingAnalytics:
             "search": "Gamma",
             "fundingMin": 15.0,
             "fundingMax": 25.0,
+            "analyticsMode": "legacy",
             "industryGroupOperator": "all",
             "industryGroups": [{"operator": "any", "industries": ["AI"]}],
             "excludedIndustries": ["Software"],
@@ -158,3 +172,46 @@ class TestIndustryFundingAnalytics:
         assert len(results) == 105
         assert results[0]["industry"] == "Industry 104"
         assert results[-1]["industry"] == "Industry 0"
+
+
+@pytest.mark.django_db
+class TestIndustryOverviewAnalytics:
+    def setup_method(self):
+        create_company("Alpha", ["AI", "Software"], 10)
+        create_company("Beta", ["AI"], 30)
+        create_company("Gamma", ["Fintech"], 20)
+        create_company("Delta", ["Software"], 0)
+
+    def test_returns_summary_and_both_distributions(self):
+        factory = APIRequestFactory()
+        request = factory.get("/public/analytics/industry-overview", {"topN": 10})
+        response = IndustryOverviewAnalyticsView.as_view()(request)
+
+        assert response.status_code == 200
+        assert response.data["topN"] == 10
+        assert response.data["summary"] == {
+            "total_companies": 4,
+            "funded_companies": 3,
+            "total_funding_usd": 60.0,
+            "total_industries": 3,
+        }
+
+        company_map = {
+            row["industry"]: row["company_count"]
+            for row in response.data["industry_by_company_count"]
+        }
+        assert company_map == {
+            "AI": 2,
+            "Software": 2,
+            "Fintech": 1,
+        }
+
+        funding_map = {
+            row["industry"]: row["total_funding_usd"]
+            for row in response.data["industry_by_total_funding"]
+        }
+        assert funding_map == {
+            "AI": 40.0,
+            "Fintech": 20.0,
+            "Software": 10.0,
+        }

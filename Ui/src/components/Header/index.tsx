@@ -31,7 +31,7 @@ const pages = [
   },
   {
     name: "Analytics",
-    href: "/analytics/industry-funding",
+    href: "/analytics/overview",
   },
   {
     name: "Settings",

@@ -25,6 +25,7 @@ import type {
   IndustryQueryGroupPayload,
 } from "~/utils/types";
 import crunchyClient from "~/utils/crunchyClient";
+import { AnalyticsNav } from "./Nav";
 
 type CompanyApiResponse = {
   results: CompayDetail[];
@@ -134,6 +135,10 @@ function parseFilters(searchParams: URLSearchParams): IndustryFundingFilterState
     search: searchParams.get("search") ?? "",
     fundingMin: parseNumber(searchParams.get("fundingMin")),
     fundingMax: parseNumber(searchParams.get("fundingMax")),
+    analyticsMode:
+      searchParams.get("analyticsMode") === "industry_total"
+        ? "industry_total"
+        : "legacy",
     industryGroupOperator:
       searchParams.get("industryGroupOperator") === "all" ? "all" : "any",
     industryGroups: parseIndustryGroups(searchParams),
@@ -182,6 +187,7 @@ function buildSearchParams(
   if (filters.search.trim()) params.set("search", filters.search.trim());
   if (filters.fundingMin != null) params.set("fundingMin", String(filters.fundingMin));
   if (filters.fundingMax != null) params.set("fundingMax", String(filters.fundingMax));
+  params.set("analyticsMode", filters.analyticsMode);
   params.set("industryGroupOperator", filters.industryGroupOperator);
   const payloadGroups = toIndustryGroupPayloads(filters.industryGroups);
   if (payloadGroups.length > 0) {
@@ -229,9 +235,21 @@ function buildCompanyFilters(
       operator: "all",
     });
   }
-  if (filters.fundingMin != null || filters.fundingMax != null) {
+  if (
+    filters.analyticsMode === "legacy" &&
+    (filters.fundingMin != null || filters.fundingMax != null)
+  ) {
     queryFilters.push({
       id: "funding_usd",
+      value: [filters.fundingMin ?? undefined, filters.fundingMax ?? undefined],
+    });
+  }
+  if (
+    filters.analyticsMode === "industry_total" &&
+    (filters.fundingMin != null || filters.fundingMax != null)
+  ) {
+    queryFilters.push({
+      id: "aggregate_funding_usd",
       value: [filters.fundingMin ?? undefined, filters.fundingMax ?? undefined],
     });
   }
@@ -243,6 +261,7 @@ function buildChartParams(filters: IndustryFundingFilterState) {
     search: filters.search.trim() || undefined,
     fundingMin: filters.fundingMin,
     fundingMax: filters.fundingMax,
+    analyticsMode: filters.analyticsMode,
     industryGroupOperator: filters.industryGroupOperator,
     industryGroups: JSON.stringify(toIndustryGroupPayloads(filters.industryGroups)),
     excludedIndustries: JSON.stringify(filters.excludedIndustries),
@@ -266,6 +285,10 @@ function sortLabel(sorting: CompanySortState) {
   const direction = sorting.desc ? "desc" : "asc";
   const fieldLabel = sorting.id === "funding_usd" ? "funding" : "created_at";
   return `${fieldLabel} ${direction}`;
+}
+
+function analyticsModeLabel(mode: IndustryFundingFilterState["analyticsMode"]) {
+  return mode === "industry_total" ? "industry total" : "company-based";
 }
 
 function nextSortState(current: CompanySortState, field: CompanySortField): CompanySortState {
@@ -293,6 +316,7 @@ function IndustryBars({
   onExclude,
   excludedIndustries,
   isFetching,
+  metric,
 }: {
   rows: IndustryFundingChartRow[];
   selectedIndustry: string | null;
@@ -300,8 +324,16 @@ function IndustryBars({
   onExclude: (industry: string) => void;
   excludedIndustries: string[];
   isFetching: boolean;
+  metric: "median_funding_usd" | "total_funding_usd";
 }) {
-  const maxFunding = rows.reduce((max, row) => Math.max(max, row.median_funding_usd), 0);
+  const maxFunding = rows.reduce(
+    (max, row) =>
+      Math.max(
+        max,
+        metric === "total_funding_usd" ? row.total_funding_usd : row.median_funding_usd
+      ),
+    0
+  );
 
   if (rows.length === 0) {
     if (isFetching) return null;
@@ -315,7 +347,9 @@ function IndustryBars({
   return (
     <div className="space-y-3">
       {rows.map((row) => {
-        const ratio = maxFunding > 0 ? (row.median_funding_usd / maxFunding) * 100 : 0;
+        const displayFunding =
+          metric === "total_funding_usd" ? row.total_funding_usd : row.median_funding_usd;
+        const ratio = maxFunding > 0 ? (displayFunding / maxFunding) * 100 : 0;
         const isSelected = row.industry === selectedIndustry;
         return (
           <div
@@ -348,9 +382,9 @@ function IndustryBars({
                 <div className="flex shrink-0 items-center gap-2">
                   <span
                     className="text-sm font-medium text-slate-700 dark:text-slate-200"
-                    title={formatCurrency(row.median_funding_usd)}
+                    title={formatCurrency(displayFunding)}
                   >
-                    {formatCompactCurrency(row.median_funding_usd) ?? formatCurrency(row.median_funding_usd)}
+                    {formatCompactCurrency(displayFunding) ?? formatCurrency(displayFunding)}
                   </span>
                   <button
                     type="button"
@@ -435,6 +469,7 @@ export function IndustryFundingAnalytics({
       search: "",
       fundingMin: undefined,
       fundingMax: undefined,
+      analyticsMode: "legacy",
       industryGroupOperator: "any",
       industryGroups: [createIndustryGroup()],
       excludedIndustries: [],
@@ -571,15 +606,19 @@ export function IndustryFundingAnalytics({
   const totalCompanyCount = companyQuery.data?.count ?? 0;
   const totalCompanyPages = Math.max(1, Math.ceil(totalCompanyCount / COMPANY_PAGE_SIZE));
   const fundingRangeLabel = buildFundingRangeLabel(filters.fundingMin, filters.fundingMax);
+  const activeChartMetric = chartQuery.data?.metric ?? "median_funding_usd";
 
   return (
     <div className="mx-auto my-4 flex w-full max-w-7xl flex-col gap-6">
       <section className="card-base">
+        <AnalyticsNav />
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="page-title">Industry Funding Analytics</h1>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-              Median funding by industry from MongoDB using the existing{" "}
+              {filters.analyticsMode === "industry_total"
+                ? "Industry total funding by industry from MongoDB using the existing "
+                : "Median funding by industry from MongoDB using the existing "}
               <code>funding_usd</code> field.
             </p>
           </div>
@@ -604,6 +643,24 @@ export function IndustryFundingAnalytics({
             fullWidth
           />
           <div className="space-y-2">
+            <FormControl fullWidth size="small">
+              <InputLabel id="analytics-mode-label">Funding algorithm</InputLabel>
+              <Select
+                labelId="analytics-mode-label"
+                label="Funding algorithm"
+                value={filters.analyticsMode}
+                onChange={(event) => {
+                  const nextMode = event.target.value as "legacy" | "industry_total";
+                  updateFilters((current) => ({
+                    ...current,
+                    analyticsMode: nextMode,
+                  }));
+                }}
+              >
+                <MenuItem value="legacy">Legacy (Company-Based)</MenuItem>
+                <MenuItem value="industry_total">New (Industry Total)</MenuItem>
+              </Select>
+            </FormControl>
             <div className="grid gap-4 sm:grid-cols-2">
               <TextField
                 label="Funding min (USD)"
@@ -633,6 +690,9 @@ export function IndustryFundingAnalytics({
               />
             </div>
             <div className="pl-3 pt-0.5 text-sm text-slate-500 dark:text-slate-400">
+              <span className="mr-3 text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                {analyticsModeLabel(filters.analyticsMode)}
+              </span>
               <span>Funding range:</span>
               <span className="ml-2 text-slate-300 dark:text-slate-200">
                 {fundingRangeLabel}
@@ -785,9 +845,25 @@ export function IndustryFundingAnalytics({
           </div>
 
           <div className="mt-4 rounded-card border border-dashed border-slate-300 p-4 dark:border-slate-600">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              Ignored Industries
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                Ignored Industries
+              </p>
+              {filters.excludedIndustries.length > 0 ? (
+                <button
+                  type="button"
+                  className="btn-secondary px-3 py-1.5 text-xs"
+                  onClick={() => {
+                    updateFilters((current) => ({
+                      ...current,
+                      excludedIndustries: [],
+                    }));
+                  }}
+                >
+                  Clear all
+                </button>
+              ) : null}
+            </div>
             <div className="mt-3 flex flex-wrap gap-2">
               {filters.excludedIndustries.length > 0 ? (
                 filters.excludedIndustries.map((industry) => (
@@ -825,7 +901,12 @@ export function IndustryFundingAnalytics({
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-          <span>Chart metric: median funding_usd</span>
+          <span>
+            Chart metric:{" "}
+            {activeChartMetric === "total_funding_usd"
+              ? "total funding_usd"
+              : "median funding_usd"}
+          </span>
           {selectedIndustry ? (
             <Chip
               color="primary"
@@ -858,6 +939,7 @@ export function IndustryFundingAnalytics({
             onExclude={handleExcludeIndustry}
             excludedIndustries={filters.excludedIndustries}
             isFetching={chartQuery.isFetching}
+            metric={activeChartMetric}
           />
         </div>
       </section>

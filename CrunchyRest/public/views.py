@@ -97,6 +97,33 @@ def build_excluded_industries_query(industries):
     }
 
 
+def get_industries_by_total_funding(base_query, funding_min=None, funding_max=None):
+    pipeline = [
+        {'$match': base_query or {}},
+        {'$unwind': '$industries'},
+        {
+            '$group': {
+                '_id': '$industries',
+                'total_funding_usd': {'$sum': '$funding_usd'},
+            }
+        },
+    ]
+
+    eligible_industries = []
+    for row in Crunchbase.objects.mongo_aggregate(pipeline):
+        total_funding_usd = row.get('total_funding_usd') or 0
+        if total_funding_usd <= 0:
+            continue
+        if funding_min is not None and total_funding_usd < funding_min:
+            continue
+        if funding_max is not None and total_funding_usd > funding_max:
+            continue
+        industry = row.get('_id')
+        if industry:
+            eligible_industries.append(industry)
+    return eligible_industries
+
+
 class CustomDjangoPaginator(DjangoPaginator):
     @cached_property
     def count(self):
@@ -172,6 +199,7 @@ class CompaniesListView(generics.ListAPIView):
     def build_root_query(filters=None, globalFilter=None):
         root_query = {}
         mongo_query = []
+        aggregate_funding_filter = None
         if globalFilter != 'null' and globalFilter is not None:
             mongo_query = [
                 {'name': {'$regex': globalFilter, '$options': 'i'}},
@@ -246,6 +274,14 @@ class CompaniesListView(generics.ListAPIView):
                             })
                     except ValueError as e:
                         print(e)
+                elif filter["id"] == "aggregate_funding_usd":
+                    try:
+                        raw_value = filter.get("value", [])
+                        aggregate_funding_filter = [
+                            int(v) if v is not None and v != "" else None for v in raw_value
+                        ]
+                    except ValueError as e:
+                        print(e)
                 elif filter["id"] == "funding":
                     mongo_query.append({
                         '$or': [
@@ -255,6 +291,17 @@ class CompaniesListView(generics.ListAPIView):
                     })
             if len(mongo_query) > 0:
                 root_query['$and'] = mongo_query
+            if aggregate_funding_filter is not None:
+                eligible_industries = get_industries_by_total_funding(
+                    root_query,
+                    funding_min=aggregate_funding_filter[0],
+                    funding_max=aggregate_funding_filter[1],
+                )
+                industry_query = build_industry_query(eligible_industries, 'any')
+                if industry_query:
+                    root_query.setdefault('$and', []).append(industry_query)
+                else:
+                    root_query = {'_id': {'$in': []}}
         return root_query
 
     @staticmethod
@@ -474,6 +521,10 @@ class IndustryFundingAnalyticsView(generics.GenericAPIView):
         search = serializers.CharField(required=False, allow_blank=True)
         fundingMin = serializers.FloatField(required=False, allow_null=True)
         fundingMax = serializers.FloatField(required=False, allow_null=True)
+        analyticsMode = serializers.ChoiceField(
+            choices=['legacy', 'industry_total'],
+            required=False,
+        )
         industryGroupOperator = serializers.ChoiceField(
             choices=['any', 'all'],
             required=False,
@@ -497,6 +548,9 @@ class IndustryFundingAnalyticsView(generics.GenericAPIView):
         search = (request.GET.get('search', '') or '').strip()
         funding_min = cls._coerce_float(request.GET.get('fundingMin'))
         funding_max = cls._coerce_float(request.GET.get('fundingMax'))
+        analytics_mode = request.GET.get('analyticsMode', 'legacy')
+        if analytics_mode not in ('legacy', 'industry_total'):
+            analytics_mode = 'legacy'
         industry_group_operator = request.GET.get('industryGroupOperator', 'any')
         if industry_group_operator not in ('any', 'all'):
             industry_group_operator = 'any'
@@ -535,6 +589,7 @@ class IndustryFundingAnalyticsView(generics.GenericAPIView):
             'search': search,
             'funding_min': funding_min,
             'funding_max': funding_max,
+            'analytics_mode': analytics_mode,
             'industry_group_operator': industry_group_operator,
             'industry_groups': industry_groups,
             'excluded_industries': list(dict.fromkeys(excluded_industries)),
@@ -546,6 +601,7 @@ class IndustryFundingAnalyticsView(generics.GenericAPIView):
         search='',
         funding_min=None,
         funding_max=None,
+        analytics_mode='legacy',
         industry_groups=None,
         industry_group_operator='any',
         excluded_industries=None,
@@ -562,10 +618,11 @@ class IndustryFundingAnalyticsView(generics.GenericAPIView):
                 ]
             })
 
-        if funding_min is not None:
-            filters.append({'funding_usd': {'$gte': funding_min}})
-        if funding_max is not None:
-            filters.append({'funding_usd': {'$lte': funding_max}})
+        if analytics_mode == 'legacy':
+            if funding_min is not None:
+                filters.append({'funding_usd': {'$gte': funding_min}})
+            if funding_max is not None:
+                filters.append({'funding_usd': {'$lte': funding_max}})
 
         industry_query = build_industry_groups_query(
             industry_groups,
@@ -578,11 +635,16 @@ class IndustryFundingAnalyticsView(generics.GenericAPIView):
         if excluded_industries_query:
             filters.append(excluded_industries_query)
 
-        filters.extend([
-            {'funding_usd': {'$ne': None}},
-            {'funding_usd': {'$gt': 0}},
-            {'industries': {'$exists': True, '$ne': []}},
-        ])
+        if analytics_mode == 'legacy':
+            filters.extend([
+                {'funding_usd': {'$ne': None}},
+                {'funding_usd': {'$gt': 0}},
+                {'industries': {'$exists': True, '$ne': []}},
+            ])
+        else:
+            filters.extend([
+                {'industries': {'$exists': True, '$ne': []}},
+            ])
 
         if not filters:
             return {}
@@ -596,6 +658,7 @@ class IndustryFundingAnalyticsView(generics.GenericAPIView):
         search='',
         funding_min=None,
         funding_max=None,
+        analytics_mode='legacy',
         industry_groups=None,
         industry_group_operator='any',
         excluded_industries=None,
@@ -604,6 +667,7 @@ class IndustryFundingAnalyticsView(generics.GenericAPIView):
             search=search,
             funding_min=funding_min,
             funding_max=funding_max,
+            analytics_mode=analytics_mode,
             industry_groups=industry_groups,
             industry_group_operator=industry_group_operator,
             excluded_industries=excluded_industries,
@@ -616,6 +680,7 @@ class IndustryFundingAnalyticsView(generics.GenericAPIView):
                     '_id': '$industries',
                     'company_count': {'$sum': 1},
                     'funding_values': {'$push': '$funding_usd'},
+                    'total_funding_usd': {'$sum': '$funding_usd'},
                 }
             },
         ]
@@ -626,17 +691,28 @@ class IndustryFundingAnalyticsView(generics.GenericAPIView):
                 value for value in row.get('funding_values', [])
                 if isinstance(value, (int, float)) and value > 0
             )
-            if not values:
+            total_funding_usd = float(row.get('total_funding_usd') or 0)
+            if analytics_mode == 'legacy' and not values:
                 continue
+            if analytics_mode == 'industry_total':
+                if total_funding_usd <= 0:
+                    continue
+                if funding_min is not None and total_funding_usd < funding_min:
+                    continue
+                if funding_max is not None and total_funding_usd > funding_max:
+                    continue
             results.append({
                 'industry': row.get('_id'),
                 'company_count': row.get('company_count', 0),
-                'median_funding_usd': float(median(values)),
+                'median_funding_usd': float(median(values)) if values else 0.0,
+                'total_funding_usd': total_funding_usd,
             })
 
         results.sort(
             key=lambda item: (
-                item['median_funding_usd'],
+                item['total_funding_usd']
+                if analytics_mode == 'industry_total'
+                else item['median_funding_usd'],
                 item['company_count'],
                 item['industry'] or '',
             ),
@@ -648,12 +724,15 @@ class IndustryFundingAnalyticsView(generics.GenericAPIView):
         applied_filters = self._get_query_filters(request)
         results = self.get_queryset(**applied_filters)
         payload = {
-            'metric': 'median_funding_usd',
+            'metric': 'total_funding_usd'
+            if applied_filters['analytics_mode'] == 'industry_total'
+            else 'median_funding_usd',
             'results': results,
             'applied_filters': {
                 'search': applied_filters['search'],
                 'fundingMin': applied_filters['funding_min'],
                 'fundingMax': applied_filters['funding_max'],
+                'analyticsMode': applied_filters['analytics_mode'],
                 'industryGroupOperator': applied_filters['industry_group_operator'],
                 'industryGroups': applied_filters['industry_groups'],
                 'excludedIndustries': applied_filters['excluded_industries'],
@@ -661,6 +740,131 @@ class IndustryFundingAnalyticsView(generics.GenericAPIView):
         }
         serializer = self.QuerySerializer(data=payload['applied_filters'])
         serializer.is_valid(raise_exception=True)
+        return Response(payload)
+
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
+
+
+class IndustryOverviewAnalyticsView(generics.GenericAPIView):
+    class QuerySerializer(serializers.Serializer):
+        topN = serializers.IntegerField(required=False, min_value=5, max_value=200)
+
+    @staticmethod
+    def _parse_top_n(request):
+        try:
+            top_n = int(request.GET.get('topN', 50))
+        except (TypeError, ValueError):
+            top_n = 50
+        return max(5, min(top_n, 200))
+
+    @classmethod
+    def _get_company_count_distribution(cls, top_n):
+        pipeline = [
+            {'$match': {'industries': {'$exists': True, '$ne': []}}},
+            {'$unwind': '$industries'},
+            {
+                '$group': {
+                    '_id': '$industries',
+                    'company_count': {'$sum': 1},
+                }
+            },
+        ]
+
+        results = []
+        for row in Crunchbase.objects.mongo_aggregate(pipeline):
+            industry = row.get('_id')
+            company_count = row.get('company_count', 0)
+            if not industry or company_count <= 0:
+                continue
+            results.append({
+                'industry': industry,
+                'company_count': company_count,
+            })
+
+        results.sort(
+            key=lambda item: (item['company_count'], item['industry']),
+            reverse=True,
+        )
+        return results[:top_n]
+
+    @classmethod
+    def _get_total_funding_distribution(cls, top_n):
+        pipeline = [
+            {'$match': {'funding_usd': {'$gt': 0}, 'industries': {'$exists': True, '$ne': []}}},
+            {'$unwind': '$industries'},
+            {
+                '$group': {
+                    '_id': '$industries',
+                    'total_funding_usd': {'$sum': '$funding_usd'},
+                    'company_count': {'$sum': 1},
+                }
+            },
+        ]
+
+        results = []
+        for row in Crunchbase.objects.mongo_aggregate(pipeline):
+            industry = row.get('_id')
+            total_funding_usd = float(row.get('total_funding_usd') or 0)
+            company_count = row.get('company_count', 0)
+            if not industry or total_funding_usd <= 0:
+                continue
+            results.append({
+                'industry': industry,
+                'total_funding_usd': total_funding_usd,
+                'company_count': company_count,
+            })
+
+        results.sort(
+            key=lambda item: (item['total_funding_usd'], item['industry']),
+            reverse=True,
+        )
+        return results[:top_n]
+
+    @classmethod
+    def _get_summary(cls):
+        company_count_pipeline = [
+            {
+                '$group': {
+                    '_id': None,
+                    'total_companies': {'$sum': 1},
+                    'funded_companies': {
+                        '$sum': {
+                            '$cond': [{'$gt': ['$funding_usd', 0]}, 1, 0]
+                        }
+                    },
+                    'total_funding_usd': {'$sum': '$funding_usd'},
+                }
+            }
+        ]
+        company_stats = next(iter(Crunchbase.objects.mongo_aggregate(company_count_pipeline)), {})
+
+        industry_count_pipeline = [
+            {'$match': {'industries': {'$exists': True, '$ne': []}}},
+            {'$unwind': '$industries'},
+            {'$group': {'_id': '$industries'}},
+            {'$group': {'_id': None, 'total_industries': {'$sum': 1}}},
+        ]
+        industry_stats = next(iter(Crunchbase.objects.mongo_aggregate(industry_count_pipeline)), {})
+
+        return {
+            'total_companies': company_stats.get('total_companies', 0),
+            'funded_companies': company_stats.get('funded_companies', 0),
+            'total_funding_usd': float(company_stats.get('total_funding_usd') or 0),
+            'total_industries': industry_stats.get('total_industries', 0),
+        }
+
+    def list(self, request, *args, **kwargs):
+        top_n = self._parse_top_n(request)
+        serializer = self.QuerySerializer(data={'topN': top_n})
+        serializer.is_valid(raise_exception=True)
+
+        payload = {
+            'summary': self._get_summary(),
+            'topN': top_n,
+            'industry_by_company_count': self._get_company_count_distribution(top_n),
+            'industry_by_total_funding': self._get_total_funding_distribution(top_n),
+        }
         return Response(payload)
 
     def get(self, request, *args, **kwargs):
