@@ -1,3 +1,4 @@
+import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/solid";
 import {
   Autocomplete,
   Chip,
@@ -871,8 +872,24 @@ export function IndustryFundingAnalytics({
                   >
                     <td className="px-4 py-3">
                       <div className="min-w-0">
-                        <p className="truncate font-medium text-slate-800 dark:text-slate-100">{company.name}</p>
-                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">{company.website || "-"}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="truncate font-medium text-slate-800 dark:text-slate-100">
+                            {company.name}
+                          </p>
+                          {company.website ? (
+                            <a
+                              href={company.website}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(event) => event.stopPropagation()}
+                              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-brand-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-brand-400"
+                              aria-label={`Open ${company.name} website`}
+                              title={company.website}
+                            >
+                              <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                            </a>
+                          ) : null}
+                        </div>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200">
