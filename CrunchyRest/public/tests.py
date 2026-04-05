@@ -100,6 +100,16 @@ class TestIndustryFundingAnalytics:
         assert result_map["AI"]["company_count"] == 1
         assert result_map["Fintech"]["company_count"] == 1
 
+    def test_excludes_ignored_industries_from_analytics(self):
+        results = IndustryFundingAnalyticsView.get_queryset(
+            excluded_industries=["Fintech"],
+        )
+
+        result_map = {row["industry"]: row for row in results}
+
+        assert "Fintech" not in result_map
+        assert result_map["AI"]["company_count"] == 2
+
     def test_list_response_shape_and_applied_filters(self):
         factory = APIRequestFactory()
         request = factory.get(
@@ -110,6 +120,7 @@ class TestIndustryFundingAnalytics:
                 "fundingMax": 25,
                 "industryGroupOperator": "all",
                 "industryGroups": '[{"operator":"any","industries":["AI"]}]',
+                "excludedIndustries": '["Software"]',
             },
         )
         response = IndustryFundingAnalyticsView.as_view()(request)
@@ -122,6 +133,7 @@ class TestIndustryFundingAnalytics:
             "fundingMax": 25.0,
             "industryGroupOperator": "all",
             "industryGroups": [{"operator": "any", "industries": ["AI"]}],
+            "excludedIndustries": ["Software"],
         }
         assert response.data["results"] == [
             {

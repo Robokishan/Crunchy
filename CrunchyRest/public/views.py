@@ -80,6 +80,23 @@ def build_industry_groups_query(industry_groups, operator='all'):
     return {'$and': clauses}
 
 
+def build_excluded_industries_query(industries):
+    cleaned_industries = [
+        industry.strip()
+        for industry in (industries or [])
+        if isinstance(industry, str) and industry.strip()
+    ]
+    if not cleaned_industries:
+        return None
+
+    return {
+        '$nor': [
+            {'industries': {'$regex': f'^{re.escape(industry)}$', '$options': 'i'}}
+            for industry in list(dict.fromkeys(cleaned_industries))
+        ]
+    }
+
+
 class CustomDjangoPaginator(DjangoPaginator):
     @cached_property
     def count(self):
@@ -190,6 +207,12 @@ class CompaniesListView(generics.ListAPIView):
                     )
                     if industry_groups_query:
                         mongo_query.append(industry_groups_query)
+                elif filter["id"] == "excluded_industries":
+                    excluded_industries_query = build_excluded_industries_query(
+                        filter.get("value", []),
+                    )
+                    if excluded_industries_query:
+                        mongo_query.append(excluded_industries_query)
                 elif filter["id"] == "lastfunding":
                     mongo_query.append({
                         'lastfunding': {'$regex': filter["value"], '$options': 'i'}
@@ -458,6 +481,9 @@ class IndustryFundingAnalyticsView(generics.GenericAPIView):
         industryGroups = serializers.ListField(
             child=serializers.DictField(), required=False
         )
+        excludedIndustries = serializers.ListField(
+            child=serializers.CharField(), required=False
+        )
 
     @staticmethod
     def _coerce_float(value):
@@ -494,12 +520,24 @@ class IndustryFundingAnalyticsView(generics.GenericAPIView):
                     else 'any',
                     'industries': list(dict.fromkeys(fallback_industries)),
                 }]
+        raw_excluded_industries = request.GET.get('excludedIndustries')
+        excluded_industries = []
+        if raw_excluded_industries:
+            try:
+                excluded_industries = [
+                    industry.strip()
+                    for industry in json.loads(raw_excluded_industries)
+                    if isinstance(industry, str) and industry.strip()
+                ]
+            except (TypeError, ValueError, json.JSONDecodeError):
+                excluded_industries = []
         return {
             'search': search,
             'funding_min': funding_min,
             'funding_max': funding_max,
             'industry_group_operator': industry_group_operator,
             'industry_groups': industry_groups,
+            'excluded_industries': list(dict.fromkeys(excluded_industries)),
         }
 
     @classmethod
@@ -510,6 +548,7 @@ class IndustryFundingAnalyticsView(generics.GenericAPIView):
         funding_max=None,
         industry_groups=None,
         industry_group_operator='any',
+        excluded_industries=None,
     ):
         filters = []
         if search:
@@ -535,6 +574,10 @@ class IndustryFundingAnalyticsView(generics.GenericAPIView):
         if industry_query:
             filters.append(industry_query)
 
+        excluded_industries_query = build_excluded_industries_query(excluded_industries)
+        if excluded_industries_query:
+            filters.append(excluded_industries_query)
+
         filters.extend([
             {'funding_usd': {'$ne': None}},
             {'funding_usd': {'$gt': 0}},
@@ -555,6 +598,7 @@ class IndustryFundingAnalyticsView(generics.GenericAPIView):
         funding_max=None,
         industry_groups=None,
         industry_group_operator='any',
+        excluded_industries=None,
     ):
         match_query = cls.build_match_query(
             search=search,
@@ -562,6 +606,7 @@ class IndustryFundingAnalyticsView(generics.GenericAPIView):
             funding_max=funding_max,
             industry_groups=industry_groups,
             industry_group_operator=industry_group_operator,
+            excluded_industries=excluded_industries,
         )
         pipeline = [
             {'$match': match_query},
@@ -611,6 +656,7 @@ class IndustryFundingAnalyticsView(generics.GenericAPIView):
                 'fundingMax': applied_filters['funding_max'],
                 'industryGroupOperator': applied_filters['industry_group_operator'],
                 'industryGroups': applied_filters['industry_groups'],
+                'excludedIndustries': applied_filters['excluded_industries'],
             },
         }
         serializer = self.QuerySerializer(data=payload['applied_filters'])

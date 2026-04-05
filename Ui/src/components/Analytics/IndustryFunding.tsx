@@ -10,7 +10,7 @@ import {
   TextField,
 } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
-import { type ChangeEvent, useCallback, useMemo, useState } from "react";
+import { type ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { CompanyCard } from "~/components/Companies/CompanyCard";
 import { CompanyDetailModal } from "~/components/Companies/CompanyDetailModal";
@@ -117,6 +117,19 @@ function parseFilters(searchParams: URLSearchParams): IndustryFundingFilterState
     industryGroupOperator:
       searchParams.get("industryGroupOperator") === "all" ? "all" : "any",
     industryGroups: parseIndustryGroups(searchParams),
+    excludedIndustries: (() => {
+      const rawExcludedIndustries = searchParams.get("excludedIndustries");
+      if (!rawExcludedIndustries) return [];
+      try {
+        const parsed = JSON.parse(rawExcludedIndustries);
+        if (!Array.isArray(parsed)) return [];
+        return normalizeGroupIndustries(
+          parsed.filter((industry): industry is string => typeof industry === "string")
+        );
+      } catch {
+        return [];
+      }
+    })(),
   };
 }
 
@@ -154,6 +167,9 @@ function buildSearchParams(
   if (payloadGroups.length > 0) {
     params.set("industryGroups", JSON.stringify(payloadGroups));
   }
+  if (filters.excludedIndustries.length > 0) {
+    params.set("excludedIndustries", JSON.stringify(filters.excludedIndustries));
+  }
   params.set("companySort", `${sorting.id}:${sorting.desc ? "desc" : "asc"}`);
   params.set("companyPage", String(page));
   if (selectedIndustry) params.set("selectedIndustry", selectedIndustry);
@@ -180,6 +196,12 @@ function buildCompanyFilters(
       operator: filters.industryGroupOperator,
     });
   }
+  if (filters.excludedIndustries.length > 0) {
+    queryFilters.push({
+      id: "excluded_industries",
+      value: filters.excludedIndustries,
+    });
+  }
   if (selectedIndustry) {
     queryFilters.push({
       id: "industries",
@@ -203,6 +225,7 @@ function buildChartParams(filters: IndustryFundingFilterState) {
     fundingMax: filters.fundingMax,
     industryGroupOperator: filters.industryGroupOperator,
     industryGroups: JSON.stringify(toIndustryGroupPayloads(filters.industryGroups)),
+    excludedIndustries: JSON.stringify(filters.excludedIndustries),
   };
 }
 
@@ -247,10 +270,14 @@ function IndustryBars({
   rows,
   selectedIndustry,
   onSelect,
+  onExclude,
+  excludedIndustries,
 }: {
   rows: IndustryFundingChartRow[];
   selectedIndustry: string | null;
   onSelect: (industry: string) => void;
+  onExclude: (industry: string) => void;
+  excludedIndustries: string[];
 }) {
   const maxFunding = rows.reduce((max, row) => Math.max(max, row.median_funding_usd), 0);
 
@@ -268,10 +295,17 @@ function IndustryBars({
         const ratio = maxFunding > 0 ? (row.median_funding_usd / maxFunding) * 100 : 0;
         const isSelected = row.industry === selectedIndustry;
         return (
-          <button
+          <div
             key={row.industry}
-            type="button"
+            role="button"
+            tabIndex={0}
             onClick={() => onSelect(row.industry)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onSelect(row.industry);
+              }
+            }}
             className={`group flex w-full items-center gap-3 rounded-card border px-4 py-3 text-left transition ${
               isSelected
                 ? "border-brand-500 bg-brand-50 dark:border-brand-400 dark:bg-brand-500/10"
@@ -288,9 +322,24 @@ function IndustryBars({
                     {row.company_count} companies
                   </p>
                 </div>
-                <span className="shrink-0 text-sm font-medium text-slate-700 dark:text-slate-200">
-                  {formatCurrency(row.median_funding_usd)}
-                </span>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                    {formatCurrency(row.median_funding_usd)}
+                  </span>
+                  <button
+                    type="button"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-300 text-lg font-semibold text-slate-500 transition-colors hover:border-red-400 hover:text-red-500 dark:border-slate-600 dark:text-slate-300 dark:hover:border-red-400 dark:hover:text-red-300"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onExclude(row.industry);
+                    }}
+                    aria-label={`Ignore ${row.industry}`}
+                    title={`Ignore ${row.industry}`}
+                    disabled={excludedIndustries.includes(row.industry)}
+                  >
+                    -
+                  </button>
+                </div>
               </div>
               <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
                 <div
@@ -303,7 +352,7 @@ function IndustryBars({
                 />
               </div>
             </div>
-          </button>
+          </div>
         );
       })}
     </div>
@@ -362,6 +411,7 @@ export function IndustryFundingAnalytics({
       fundingMax: undefined,
       industryGroupOperator: "any",
       industryGroups: [createIndustryGroup()],
+      excludedIndustries: [],
     };
     setDraftSearch("");
     setSelectedIndustry(null);
@@ -398,6 +448,28 @@ export function IndustryFundingAnalytics({
     [filters, selectedIndustry, sorting, syncUrl]
   );
 
+  const handleExcludeIndustry = useCallback(
+    (industry: string) => {
+      const normalizedIndustry = industry.trim();
+      if (!normalizedIndustry) return;
+      const nextExcludedIndustries = normalizeGroupIndustries([
+        ...filters.excludedIndustries,
+        normalizedIndustry,
+      ]);
+      const nextFilters: IndustryFundingFilterState = {
+        ...filters,
+        excludedIndustries: nextExcludedIndustries,
+      };
+      const nextSelectedIndustry =
+        selectedIndustry === normalizedIndustry ? null : selectedIndustry;
+      setFilters(nextFilters);
+      setSelectedIndustry(nextSelectedIndustry);
+      setCompanyPage(1);
+      syncUrl(nextFilters, nextSelectedIndustry, sorting, 1);
+    },
+    [filters, selectedIndustry, sorting, syncUrl]
+  );
+
   const handleSortChange = useCallback(
     (field: CompanySortField) => {
       const nextSorting = nextSortState(sorting, field);
@@ -415,6 +487,22 @@ export function IndustryFundingAnalytics({
     },
     [filters, selectedIndustry, sorting, syncUrl]
   );
+
+  useEffect(() => {
+    if (draftSearch === filters.search) return;
+
+    const timeoutId = window.setTimeout(() => {
+      const nextFilters = {
+        ...filters,
+        search: draftSearch,
+      };
+      setFilters(nextFilters);
+      setCompanyPage(1);
+      syncUrl(nextFilters, selectedIndustry, sorting, 1);
+    }, 350);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [draftSearch, filters, selectedIndustry, sorting, syncUrl]);
 
   const industryOptions = useMemo(
     () => industries.map((industry) => industry.industry).sort((a, b) => a.localeCompare(b)),
@@ -659,6 +747,36 @@ export function IndustryFundingAnalytics({
 
           <div className="mt-4 rounded-card border border-dashed border-slate-300 p-4 dark:border-slate-600">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              Ignored Industries
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {filters.excludedIndustries.length > 0 ? (
+                filters.excludedIndustries.map((industry) => (
+                  <Chip
+                    key={industry}
+                    color="warning"
+                    variant="outlined"
+                    label={`Ignored: ${industry}`}
+                    onDelete={() => {
+                      updateFilters((current) => ({
+                        ...current,
+                        excludedIndustries: current.excludedIndustries.filter(
+                          (item) => item !== industry
+                        ),
+                      }));
+                    }}
+                  />
+                ))
+              ) : (
+                <span className="text-sm text-slate-500 dark:text-slate-400">
+                  Use the minus button on a chart row to hide an industry from both the chart and the table.
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-card border border-dashed border-slate-300 p-4 dark:border-slate-600">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               Query Preview
             </p>
             <p className="mt-2 break-words font-mono text-sm text-slate-700 dark:text-slate-200">
@@ -698,6 +816,8 @@ export function IndustryFundingAnalytics({
             rows={chartRows}
             selectedIndustry={selectedIndustry}
             onSelect={handleIndustrySelection}
+            onExclude={handleExcludeIndustry}
+            excludedIndustries={filters.excludedIndustries}
           />
         </div>
       </section>

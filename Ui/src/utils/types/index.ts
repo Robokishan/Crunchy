@@ -35,6 +35,7 @@ export interface IndustryFundingAnalyticsResponse {
         fundingMax: number | null;
         industryGroupOperator: "any" | "all";
         industryGroups: IndustryQueryGroupPayload[];
+        excludedIndustries: string[];
     };
 }
 
@@ -53,4 +54,5 @@ export interface IndustryFundingFilterState {
     fundingMax?: number;
     industryGroupOperator: "any" | "all";
     industryGroups: IndustryQueryGroup[];
+    excludedIndustries: string[];
 }
