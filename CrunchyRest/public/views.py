@@ -1,3 +1,4 @@
+from collections import defaultdict
 from rest_framework.decorators import api_view
 from rest_framework import generics
 from rest_framework.response import Response
@@ -122,6 +123,204 @@ def get_industries_by_total_funding(base_query, funding_min=None, funding_max=No
         if industry:
             eligible_industries.append(industry)
     return eligible_industries
+
+
+FUNDING_BRACKETS = (
+    {
+        'key': 'under_50k',
+        'label': 'Under $50K',
+        'min': 0,
+        'max': 50_000,
+    },
+    {
+        'key': '50k_to_100k',
+        'label': '$50K-$100K',
+        'min': 50_000,
+        'max': 100_000,
+    },
+    {
+        'key': '100k_to_150k',
+        'label': '$100K-$150K',
+        'min': 100_000,
+        'max': 150_000,
+    },
+    {
+        'key': '150k_to_250k',
+        'label': '$150K-$250K',
+        'min': 150_000,
+        'max': 250_000,
+    },
+    {
+        'key': '250k_to_400k',
+        'label': '$250K-$400K',
+        'min': 250_000,
+        'max': 400_000,
+    },
+    {
+        'key': '400k_to_600k',
+        'label': '$400K-$600K',
+        'min': 400_000,
+        'max': 600_000,
+    },
+    {
+        'key': '600k_to_850k',
+        'label': '$600K-$850K',
+        'min': 600_000,
+        'max': 850_000,
+    },
+    {
+        'key': '850k_to_1m',
+        'label': '$850K-$1M',
+        'min': 850_000,
+        'max': 1_000_000,
+    },
+    {
+        'key': '1m_to_1_5m',
+        'label': '$1M-$1.5M',
+        'min': 1_000_000,
+        'max': 1_500_000,
+    },
+    {
+        'key': '1_5m_to_2m',
+        'label': '$1.5M-$2M',
+        'min': 1_500_000,
+        'max': 2_000_000,
+    },
+    {
+        'key': '2m_to_3m',
+        'label': '$2M-$3M',
+        'min': 2_000_000,
+        'max': 3_000_000,
+    },
+    {
+        'key': '3m_to_5m',
+        'label': '$3M-$5M',
+        'min': 3_000_000,
+        'max': 5_000_000,
+    },
+    {
+        'key': '5m_to_7_5m',
+        'label': '$5M-$7.5M',
+        'min': 5_000_000,
+        'max': 7_500_000,
+    },
+    {
+        'key': '7_5m_to_10m',
+        'label': '$7.5M-$10M',
+        'min': 7_500_000,
+        'max': 10_000_000,
+    },
+    {
+        'key': '10m_to_15m',
+        'label': '$10M-$15M',
+        'min': 10_000_000,
+        'max': 15_000_000,
+    },
+    {
+        'key': '15m_to_20m',
+        'label': '$15M-$20M',
+        'min': 15_000_000,
+        'max': 20_000_000,
+    },
+    {
+        'key': '20m_to_25m',
+        'label': '$20M-$25M',
+        'min': 20_000_000,
+        'max': 25_000_000,
+    },
+    {
+        'key': '25m_to_35m',
+        'label': '$25M-$35M',
+        'min': 25_000_000,
+        'max': 35_000_000,
+    },
+    {
+        'key': '35m_to_50m',
+        'label': '$35M-$50M',
+        'min': 35_000_000,
+        'max': 50_000_000,
+    },
+    {
+        'key': '50m_to_75m',
+        'label': '$50M-$75M',
+        'min': 50_000_000,
+        'max': 75_000_000,
+    },
+    {
+        'key': '75m_to_100m',
+        'label': '$75M-$100M',
+        'min': 75_000_000,
+        'max': 100_000_000,
+    },
+    {
+        'key': '100m_to_150m',
+        'label': '$100M-$150M',
+        'min': 100_000_000,
+        'max': 150_000_000,
+    },
+    {
+        'key': '150m_to_250m',
+        'label': '$150M-$250M',
+        'min': 150_000_000,
+        'max': 250_000_000,
+    },
+    {
+        'key': '250m_to_350m',
+        'label': '$250M-$350M',
+        'min': 250_000_000,
+        'max': 350_000_000,
+    },
+    {
+        'key': '350m_to_500m',
+        'label': '$350M-$500M',
+        'min': 350_000_000,
+        'max': 500_000_000,
+    },
+    {
+        'key': '500m_to_750m',
+        'label': '$500M-$750M',
+        'min': 500_000_000,
+        'max': 750_000_000,
+    },
+    {
+        'key': '750m_to_1b',
+        'label': '$750M-$1B',
+        'min': 750_000_000,
+        'max': 1_000_000_000,
+    },
+    {
+        'key': '1b_to_2b',
+        'label': '$1B-$2B',
+        'min': 1_000_000_000,
+        'max': 2_000_000_000,
+    },
+    {
+        'key': '2b_to_5b',
+        'label': '$2B-$5B',
+        'min': 2_000_000_000,
+        'max': 5_000_000_000,
+    },
+    {
+        'key': '5b_plus',
+        'label': '$5B+',
+        'min': 5_000_000_000,
+        'max': None,
+    },
+)
+
+
+def get_funding_bracket_meta(funding_usd):
+    if not isinstance(funding_usd, (int, float)) or funding_usd <= 0:
+        return None
+
+    for bracket in FUNDING_BRACKETS:
+        min_value = bracket['min']
+        max_value = bracket['max']
+        if funding_usd < min_value:
+            continue
+        if max_value is None or funding_usd < max_value:
+            return bracket
+    return FUNDING_BRACKETS[-1]
 
 
 class CustomDjangoPaginator(DjangoPaginator):
@@ -741,6 +940,154 @@ class IndustryFundingAnalyticsView(generics.GenericAPIView):
         serializer = self.QuerySerializer(data=payload['applied_filters'])
         serializer.is_valid(raise_exception=True)
         return Response(payload)
+
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
+
+
+class FundingBracketDistributionView(generics.GenericAPIView):
+    @staticmethod
+    def _clean_industries(industries):
+        cleaned = [
+            industry.strip()
+            for industry in (industries or [])
+            if isinstance(industry, str) and industry.strip()
+        ]
+        return list(dict.fromkeys(cleaned))
+
+    @staticmethod
+    def _coerce_funding(value):
+        try:
+            funding_usd = float(value)
+        except (TypeError, ValueError):
+            return None
+        if funding_usd <= 0:
+            return None
+        return funding_usd
+
+    @classmethod
+    def _empty_bracket_state(cls):
+        return {
+            bracket['key']: {
+                'company_count': 0,
+                'total_funding_usd': 0.0,
+                'funding_values': [],
+                'industries': defaultdict(
+                    lambda: {'industry': '', 'company_count': 0, 'total_funding_usd': 0.0}
+                ),
+            }
+            for bracket in FUNDING_BRACKETS
+        }
+
+    @classmethod
+    def _build_payload(cls):
+        summary = {
+            'total_companies': 0,
+            'funded_companies': 0,
+            'bracketed_companies': 0,
+            'excluded_without_funding': 0,
+            'excluded_without_industries': 0,
+            'total_funding_usd': 0.0,
+            'coverage_ratio': 0.0,
+        }
+        bracket_state = cls._empty_bracket_state()
+
+        options = CodecOptions(document_class=dict)
+        cursor = Crunchbase.objects.mongo_with_options(codec_options=options).find(
+            {},
+            {
+                'industries': 1,
+                'funding_usd': 1,
+            },
+        )
+
+        for doc in cursor:
+            summary['total_companies'] += 1
+            industries = cls._clean_industries(doc.get('industries', []))
+            funding_usd = cls._coerce_funding(doc.get('funding_usd'))
+
+            if funding_usd is None:
+                summary['excluded_without_funding'] += 1
+            else:
+                summary['funded_companies'] += 1
+                summary['total_funding_usd'] += funding_usd
+
+            if funding_usd is not None and not industries:
+                summary['excluded_without_industries'] += 1
+
+            if funding_usd is None or not industries:
+                continue
+
+            bracket = get_funding_bracket_meta(funding_usd)
+            if bracket is None:
+                continue
+
+            summary['bracketed_companies'] += 1
+            state = bracket_state[bracket['key']]
+            state['company_count'] += 1
+            state['total_funding_usd'] += funding_usd
+            state['funding_values'].append(funding_usd)
+
+            for industry in industries:
+                industry_row = state['industries'][industry]
+                industry_row['industry'] = industry
+                industry_row['company_count'] += 1
+                industry_row['total_funding_usd'] += funding_usd
+
+        if summary['funded_companies'] > 0:
+            summary['coverage_ratio'] = (
+                summary['bracketed_companies'] / summary['funded_companies']
+            )
+
+        brackets = []
+        for bracket in FUNDING_BRACKETS:
+            state = bracket_state[bracket['key']]
+            industries = list(state['industries'].values())
+            industries.sort(
+                key=lambda item: (
+                    item['company_count'],
+                    item['total_funding_usd'],
+                    item['industry'],
+                ),
+                reverse=True,
+            )
+
+            brackets.append({
+                'key': bracket['key'],
+                'label': bracket['label'],
+                'min': bracket['min'],
+                'max': bracket['max'],
+                'company_count': state['company_count'],
+                'industry_count': len(industries),
+                'total_funding_usd': float(state['total_funding_usd']),
+                'median_funding_usd': float(median(state['funding_values']))
+                if state['funding_values']
+                else 0.0,
+                'share_of_funded_companies': (
+                    state['company_count'] / summary['funded_companies']
+                    if summary['funded_companies'] > 0
+                    else 0.0
+                ),
+                'industries': [
+                    {
+                        'industry': item['industry'],
+                        'company_count': item['company_count'],
+                        'total_funding_usd': float(item['total_funding_usd']),
+                    }
+                    for item in industries
+                ],
+            })
+
+        return {
+            'summary': {
+                **summary,
+                'total_funding_usd': float(summary['total_funding_usd']),
+            },
+            'brackets': brackets,
+        }
+
+    def list(self, request, *args, **kwargs):
+        return Response(self._build_payload())
 
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)

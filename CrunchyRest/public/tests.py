@@ -2,7 +2,11 @@ import pytest
 from rest_framework.test import APIRequestFactory
 
 from databucket.models import Crunchbase
-from public.views import IndustryFundingAnalyticsView, IndustryOverviewAnalyticsView
+from public.views import (
+    FundingBracketDistributionView,
+    IndustryFundingAnalyticsView,
+    IndustryOverviewAnalyticsView,
+)
 
 
 def create_company(name, industries, funding_usd, created_at=None):
@@ -215,3 +219,69 @@ class TestIndustryOverviewAnalytics:
             "Fintech": 20.0,
             "Software": 10.0,
         }
+
+
+@pytest.mark.django_db
+class TestFundingBracketDistributionAnalytics:
+    def setup_method(self):
+        create_company("PreSeed", ["AI", "Software"], 500_000)
+        create_company("Seed", ["AI"], 2_000_000)
+        create_company("SeriesA", ["Fintech"], 8_000_000)
+        create_company("SeriesC", ["Fintech", "Enterprise"], 30_000_000)
+        create_company("LateStage", ["Enterprise"], 150_000_000)
+        create_company("NoFunding", ["AI"], 0)
+        create_company("NoIndustry", [], 4_000_000)
+
+    def test_returns_all_brackets_with_full_breakdown(self):
+        factory = APIRequestFactory()
+        request = factory.get("/public/analytics/funding-bracket-distribution")
+        response = FundingBracketDistributionView.as_view()(request)
+
+        assert response.status_code == 200
+        assert response.data["summary"] == {
+            "total_companies": 7,
+            "funded_companies": 6,
+            "bracketed_companies": 5,
+            "excluded_without_funding": 1,
+            "excluded_without_industries": 1,
+            "total_funding_usd": 194500000.0,
+            "coverage_ratio": pytest.approx(5 / 6),
+        }
+
+        bracket_map = {row["key"]: row for row in response.data["brackets"]}
+
+        assert len(bracket_map) == 30
+
+        assert bracket_map["400k_to_600k"]["company_count"] == 1
+        assert bracket_map["400k_to_600k"]["median_funding_usd"] == 500000.0
+        assert bracket_map["400k_to_600k"]["industries"] == [
+            {
+                "industry": "Software",
+                "company_count": 1,
+                "total_funding_usd": 500000.0,
+            },
+            {
+                "industry": "AI",
+                "company_count": 1,
+                "total_funding_usd": 500000.0,
+            },
+        ]
+
+        assert bracket_map["2m_to_3m"]["company_count"] == 1
+        assert bracket_map["2m_to_3m"]["total_funding_usd"] == 2000000.0
+        assert bracket_map["7_5m_to_10m"]["company_count"] == 1
+        assert bracket_map["25m_to_35m"]["company_count"] == 1
+        assert bracket_map["150m_to_250m"]["company_count"] == 1
+
+        assert bracket_map["25m_to_35m"]["industries"] == [
+            {
+                "industry": "Fintech",
+                "company_count": 1,
+                "total_funding_usd": 30000000.0,
+            },
+            {
+                "industry": "Enterprise",
+                "company_count": 1,
+                "total_funding_usd": 30000000.0,
+            },
+        ]

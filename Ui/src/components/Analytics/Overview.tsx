@@ -14,6 +14,7 @@ import type {
   IndustryOverviewFundingRow,
 } from "~/utils/types";
 import crunchyClient from "~/utils/crunchyClient";
+import { FundingBracketDistribution } from "./FundingBracketDistribution";
 import { AnalyticsNav } from "./Nav";
 
 function formatCurrency(value: number) {
@@ -211,6 +212,8 @@ export function IndustryOverviewAnalytics() {
           titleFor={(row) => formatCurrency(row.total_funding_usd)}
         />
       </div>
+
+      <FundingBracketDistribution />
     </div>
   );
 }

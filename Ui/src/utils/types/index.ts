@@ -50,6 +50,38 @@ export interface IndustryOverviewAnalyticsResponse {
     industry_by_total_funding: IndustryOverviewFundingRow[];
 }
 
+export interface FundingBracketIndustryRow {
+    industry: string;
+    company_count: number;
+    total_funding_usd: number;
+}
+
+export interface FundingBracketDistributionBracket {
+    key: string;
+    label: string;
+    min: number;
+    max: number | null;
+    company_count: number;
+    industry_count: number;
+    total_funding_usd: number;
+    median_funding_usd: number;
+    share_of_funded_companies: number;
+    industries: FundingBracketIndustryRow[];
+}
+
+export interface FundingBracketDistributionResponse {
+    summary: {
+        total_companies: number;
+        funded_companies: number;
+        bracketed_companies: number;
+        excluded_without_funding: number;
+        excluded_without_industries: number;
+        total_funding_usd: number;
+        coverage_ratio: number;
+    };
+    brackets: FundingBracketDistributionBracket[];
+}
+
 export interface IndustryFundingAnalyticsResponse {
     metric: "median_funding_usd" | "total_funding_usd";
     results: IndustryFundingChartRow[];
