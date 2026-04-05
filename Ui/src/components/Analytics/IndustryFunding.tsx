@@ -66,6 +66,25 @@ function formatCurrency(value: number | undefined) {
   }).format(value);
 }
 
+function formatCompactCurrency(value: number | undefined) {
+  if (value == null || !Number.isFinite(value)) return undefined;
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+
+function buildFundingRangeLabel(min?: number, max?: number) {
+  const compactMin = formatCompactCurrency(min);
+  const compactMax = formatCompactCurrency(max);
+  if (compactMin && compactMax) return `${compactMin} to ${compactMax}`;
+  if (compactMin) return `Min ${compactMin}`;
+  if (compactMax) return `Max ${compactMax}`;
+  return "No funding range filter";
+}
+
 function normalizeGroupIndustries(industries: string[]) {
   return Array.from(
     new Set(
@@ -324,8 +343,11 @@ function IndustryBars({
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                    {formatCurrency(row.median_funding_usd)}
+                  <span
+                    className="text-sm font-medium text-slate-700 dark:text-slate-200"
+                    title={formatCurrency(row.median_funding_usd)}
+                  >
+                    {formatCompactCurrency(row.median_funding_usd) ?? formatCurrency(row.median_funding_usd)}
                   </span>
                   <button
                     type="button"
@@ -543,6 +565,7 @@ export function IndustryFundingAnalytics({
   const companies = companyQuery.data?.results ?? [];
   const totalCompanyCount = companyQuery.data?.count ?? 0;
   const totalCompanyPages = Math.max(1, Math.ceil(totalCompanyCount / COMPANY_PAGE_SIZE));
+  const fundingRangeLabel = buildFundingRangeLabel(filters.fundingMin, filters.fundingMax);
 
   return (
     <div className="mx-auto my-4 flex w-full max-w-7xl flex-col gap-6">
@@ -565,7 +588,7 @@ export function IndustryFundingAnalytics({
           </div>
         </div>
 
-        <div className="mt-5 grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(220px,1fr)_minmax(220px,1fr)]">
+        <div className="mt-5 grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.45fr)] md:items-start">
           <TextField
             label="Search companies"
             value={draftSearch}
@@ -575,32 +598,42 @@ export function IndustryFundingAnalytics({
             }}
             fullWidth
           />
-          <TextField
-            label="Funding min (USD)"
-            type="number"
-            value={filters.fundingMin ?? ""}
-            onChange={(event) => {
-              const nextValue = parseNumber(event.target.value) ?? undefined;
-              updateFilters((current) => ({
-                ...current,
-                fundingMin: nextValue,
-              }));
-            }}
-            fullWidth
-          />
-          <TextField
-            label="Funding max (USD)"
-            type="number"
-            value={filters.fundingMax ?? ""}
-            onChange={(event) => {
-              const nextValue = parseNumber(event.target.value) ?? undefined;
-              updateFilters((current) => ({
-                ...current,
-                fundingMax: nextValue,
-              }));
-            }}
-            fullWidth
-          />
+          <div className="space-y-2">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <TextField
+                label="Funding min (USD)"
+                type="number"
+                value={filters.fundingMin ?? ""}
+                onChange={(event) => {
+                  const nextValue = parseNumber(event.target.value) ?? undefined;
+                  updateFilters((current) => ({
+                    ...current,
+                    fundingMin: nextValue,
+                  }));
+                }}
+                fullWidth
+              />
+              <TextField
+                label="Funding max (USD)"
+                type="number"
+                value={filters.fundingMax ?? ""}
+                onChange={(event) => {
+                  const nextValue = parseNumber(event.target.value) ?? undefined;
+                  updateFilters((current) => ({
+                    ...current,
+                    fundingMax: nextValue,
+                  }));
+                }}
+                fullWidth
+              />
+            </div>
+            <div className="pl-3 pt-0.5 text-sm text-slate-500 dark:text-slate-400">
+              <span>Funding range:</span>
+              <span className="ml-2 text-slate-300 dark:text-slate-200">
+                {fundingRangeLabel}
+              </span>
+            </div>
+          </div>
         </div>
 
         <div className="mt-5 rounded-card border border-slate-200/80 p-4 dark:border-slate-700/70">
