@@ -1,117 +1,153 @@
+import pytest
+from rest_framework.test import APIRequestFactory
+
 from databucket.models import Crunchbase
 from public.views import IndustryList
-from rest_framework.test import APIRequestFactory
-import unittest
-import pytest
 
 
-@pytest.mark.django_db  # This mark allows access to the database
-class TestIndustryFilter(unittest.TestCase):
+def create_company(name, industries):
+    Crunchbase.objects.create(
+        name=name,
+        funding="",
+        funding_usd=0,
+        rate=0,
+        website=f"https://{name.lower()}.example.com",
+        crunchbase_url=f"https://crunchbase.com/organization/{name.lower()}",
+        logo="https://logo.example.com/logo.png",
+        founders=["Founder1", "Founder2"],
+        similar_companies=["Company2", "Company3"],
+        description="Test Description",
+        long_description="Long Description",
+        acquired="",
+        industries=industries,
+        founded="2020-01-01",
+        lastfunding="2020-01-01",
+        stocksymbol="",
+    )
 
-    def setUp(self):
-        Crunchbase.objects.create(name="Company1",
-                                  website="https://test.com",
-                                  logo="https://logo.com",
-                                  founders=["Founder1", "Founder2"],
-                                  similar_companies=["Company2", "Company3"],
-                                  description="Test Description",
-                                  long_description="Long Description",
-                                  industries=[
-                                      "Artificial Intelligence", "Tech"],
-                                  founded="2020-01-01",
-                                  lastfunding="2020-01-01")
 
-        Crunchbase.objects.create(name="Company2",
-                                  website="https://test.com",
-                                  logo="https://logo.com",
-                                  founders=["Founder1", "Founder2"],
-                                  similar_companies=["Company2", "Company3"],
-                                  description="Test Description",
-                                  long_description="Long Description",
-                                  industries=[
-                                      "Artificial Intelligence", "Finance"],
-                                  founded="2020-01-01",
-                                  lastfunding="2020-01-01")
+def industry_names(response):
+    return [row["industry"] for row in response.data]
 
-        Crunchbase.objects.create(name="Company3",
-                                  website="https://test.com",
-                                  logo="https://logo.com",
-                                  founders=["Founder1", "Founder2"],
-                                  similar_companies=["Company2", "Company3"],
-                                  description="Test Description",
-                                  long_description="Long Description",
-                                  industries=["Finance"],
-                                  founded="2020-01-01",
-                                  lastfunding="2020-01-01")
 
-        Crunchbase.objects.create(name="Company4",
-                                  website="https://test.com",
-                                  logo="https://logo.com",
-                                  founders=["Founder1", "Founder2"],
-                                  similar_companies=["Company2", "Company3"],
-                                  description="Test Description",
-                                  long_description="Long Description",
-                                  industries=[
-                                      "Artificial Intelligence"],
-                                  founded="2020-01-01",
-                                  lastfunding="2020-01-01")
+@pytest.mark.django_db
+class TestIndustryFilter:
+    def setup_method(self):
+        self.factory = APIRequestFactory()
+        create_company("Company1", ["Artificial Intelligence", "Tech"])
+        create_company("Company2", ["Artificial Intelligence", "Finance"])
+        create_company("Company3", ["Finance"])
+        create_company("Company4", ["Artificial Intelligence"])
 
-    def test_get_queryset_with_selected(self):
-        factory = APIRequestFactory()
-        request = factory.get(
-            '/industries', {'selected[]': ['Artificial Intelligence', 'Finance']})
-        view = IndustryList.as_view()
-        response = view(request)
+    def test_returns_matching_industries_for_multiple_selected(self):
+        request = self.factory.get(
+            "/industries",
+            {"selected[]": ["Artificial Intelligence", "Finance"]},
+        )
+        response = IndustryList.as_view()(request)
+        result_map = {row["industry"]: row["count"] for row in response.data}
+
         assert response.status_code == 200
-        assert "Artificial Intelligence" in response.data
-        assert "Finance" in response.data
-        assert 2 == len(response.data)
+        assert result_map == {
+            "Artificial Intelligence": 1,
+            "Finance": 1,
+        }
 
-    def test_get_queryset_with_selected(self):
-        factory = APIRequestFactory()
-        request = factory.get(
-            '/industries', {'selected[]': ['Artificial Intelligence']})
-        view = IndustryList.as_view()
-        response = view(request)
+    def test_returns_all_matching_industries_for_single_selected(self):
+        request = self.factory.get(
+            "/industries",
+            {"selected[]": ["Artificial Intelligence"]},
+        )
+        response = IndustryList.as_view()(request)
+        result_map = {row["industry"]: row["count"] for row in response.data}
+
         assert response.status_code == 200
-        assert 3 == len(response.data)
+        assert result_map == {
+            "Artificial Intelligence": 3,
+            "Finance": 1,
+            "Tech": 1,
+        }
 
-    def test_get_queryset_with_selected_empty(self):
-        factory = APIRequestFactory()
-        request = factory.get(
-            '/industries', {'selected[]': []})
-        view = IndustryList.as_view()
-        response = view(request)
+    def test_returns_default_industry_order_without_selection(self):
+        response = IndustryList.as_view()(self.factory.get("/industries"))
+
         assert response.status_code == 200
-        assert 3 == len(response.data)
+        assert industry_names(response) == [
+            "Artificial Intelligence",
+            "Finance",
+            "Tech",
+        ]
 
-    def test_get_queryset_with_selected_none(self):
-        factory = APIRequestFactory()
-        request = factory.get(
-            '/industries')
-        view = IndustryList.as_view()
-        response = view(request)
+    def test_returns_same_default_order_for_empty_selection(self):
+        response = IndustryList.as_view()(
+            self.factory.get("/industries", {"selected[]": []})
+        )
+
         assert response.status_code == 200
-        assert 3 == len(response.data)
+        assert industry_names(response) == [
+            "Artificial Intelligence",
+            "Finance",
+            "Tech",
+        ]
 
-    def test_get_queryset_with_selected_invalid(self):
-        factory = APIRequestFactory()
-        request = factory.get(
-            '/industries', {'selected[]': ['Invalid']})
-        view = IndustryList.as_view()
-        response = view(request)
+    def test_returns_empty_for_invalid_selected_industry(self):
+        response = IndustryList.as_view()(
+            self.factory.get("/industries", {"selected[]": ["Invalid"]})
+        )
+
         assert response.status_code == 200
-        assert 0 == len(response.data)
+        assert response.data == []
 
-    def test_get_queryset_with_selected_invalid_and_valid(self):
-        factory = APIRequestFactory()
-        request = factory.get(
-            '/industries', {'selected[]': ['Artificial Intelligence', 'Invalid']})
-        view = IndustryList.as_view()
-        response = view(request)
+    def test_returns_empty_for_invalid_and_valid_selected_mix(self):
+        response = IndustryList.as_view()(
+            self.factory.get(
+                "/industries",
+                {"selected[]": ["Artificial Intelligence", "Invalid"]},
+            )
+        )
+
         assert response.status_code == 200
-        assert 0 == len(response.data)
+        assert response.data == []
 
+    def test_ignores_blank_selected_values(self):
+        response = IndustryList.as_view()(
+            self.factory.get(
+                "/industries",
+                [("selected[]", ""), ("selected[]", "Artificial Intelligence")],
+            )
+        )
+        result_map = {row["industry"]: row["count"] for row in response.data}
 
-if __name__ == '__main__':
-    unittest.main()
+        assert response.status_code == 200
+        assert result_map == {
+            "Artificial Intelligence": 3,
+            "Finance": 1,
+            "Tech": 1,
+        }
+
+    def test_supports_alphabetical_sort_for_selected_results(self):
+        response = IndustryList.as_view()(
+            self.factory.get(
+                "/industries",
+                {"selected[]": ["Artificial Intelligence"], "sortBy": "alphabetical"},
+            )
+        )
+
+        assert response.status_code == 200
+        assert industry_names(response) == [
+            "Artificial Intelligence",
+            "Finance",
+            "Tech",
+        ]
+
+    def test_supports_industry_count_sort_for_selected_results(self):
+        response = IndustryList.as_view()(
+            self.factory.get(
+                "/industries",
+                {"selected[]": ["Artificial Intelligence"], "sortBy": "industryCount"},
+            )
+        )
+
+        assert response.status_code == 200
+        assert response.data[0] == {"industry": "Artificial Intelligence", "count": 3}
+        assert [row["count"] for row in response.data] == [3, 1, 1]
