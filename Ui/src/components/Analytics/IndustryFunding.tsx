@@ -292,16 +292,19 @@ function IndustryBars({
   onSelect,
   onExclude,
   excludedIndustries,
+  isFetching,
 }: {
   rows: IndustryFundingChartRow[];
   selectedIndustry: string | null;
   onSelect: (industry: string) => void;
   onExclude: (industry: string) => void;
   excludedIndustries: string[];
+  isFetching: boolean;
 }) {
   const maxFunding = rows.reduce((max, row) => Math.max(max, row.median_funding_usd), 0);
 
   if (rows.length === 0) {
+    if (isFetching) return null;
     return (
       <div className="rounded-card border border-dashed border-slate-300 p-6 text-sm text-slate-500 dark:border-slate-600 dark:text-slate-400">
         No industries match the current filters.
@@ -545,6 +548,7 @@ export function IndustryFundingAnalytics({
       );
       return data;
     },
+    placeholderData: (previousData) => previousData,
   });
 
   const companyQuery = useQuery({
@@ -559,6 +563,7 @@ export function IndustryFundingAnalytics({
       });
       return data;
     },
+    placeholderData: (previousData) => previousData,
   });
 
   const chartRows = chartQuery.data?.results ?? [];
@@ -852,6 +857,7 @@ export function IndustryFundingAnalytics({
             onSelect={handleIndustrySelection}
             onExclude={handleExcludeIndustry}
             excludedIndustries={filters.excludedIndustries}
+            isFetching={chartQuery.isFetching}
           />
         </div>
       </section>
